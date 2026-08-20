@@ -480,8 +480,10 @@
                 const fCost = f.units * f.avgNav;
                 const profit = fVal - fCost;
                 const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0;
-
-                dailyProfitSum += fVal * ((f.dailyPct || 0) / 100);
+                const dailyPct = f.dailyPct || f.change1d || 0;
+                const dailyBaht = fVal * (dailyPct / 100);
+                
+                dailyProfitSum += fVal * (dailyPct / 100);
                 ytdProfitSum += fVal * ((f.ytdPct || 0) / 100);
                 threeMonthProfitSum += fVal * ((f.threeMonthPct || 0) / 100);
 
@@ -496,7 +498,7 @@
                     <td class="text-right">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
                     <td class="text-right" style="font-weight:600;">฿${formatNum(fVal)}</td>
                     <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'}">${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${profitPct.toFixed(2)}%)</td>
-                    <td class="text-right ${f.dailyPct >= 0 ? 'text-green' : 'text-red'}">${f.dailyPct >= 0 ? '+' : ''}${(f.dailyPct || 0).toFixed(2)}%</td>
+                    <td class="text-right ${dailyPct >= 0 ? 'text-green' : 'text-red'}">${dailyPct >= 0 ? '+' : ''}${dailyPct.toFixed(2)}% (${dailyPct >= 0 ? '+' : ''}฿${formatNum(dailyBaht)})</td>
                     <td class="text-right ${(f.threeMonthPct || 0) >= 0 ? 'text-green' : 'text-red'}">${(f.threeMonthPct || 0) >= 0 ? '+' : ''}${(f.threeMonthPct || 0).toFixed(2)}%</td>
                     <td class="text-right ${(f.ytdPct || 0) >= 0 ? 'text-gold' : 'text-red'}">${(f.ytdPct || 0) >= 0 ? '+' : ''}${(f.ytdPct || 0).toFixed(2)}%</td>
                     <td class="text-center">
