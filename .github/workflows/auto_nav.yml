@@ -2,8 +2,8 @@ name: Auto Update GPF NAV
 
 on:
   schedule:
-    # รันทุกวันจันทร์-ศุกร์ เวลา 19:30 น. (เวลาไทย = 12:30 UTC)
-    - cron: '30 12 * * 1-5'
+    # รันทุกวันจันทร์-ศุกร์ เวลา 10:10 น. (เวลาไทย = 03:10 UTC)
+    - cron: '10 3 * * 1-5'
   workflow_dispatch:
 
 jobs:
