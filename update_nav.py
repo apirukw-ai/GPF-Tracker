@@ -45,8 +45,17 @@ def update_firebase(nav_data):
     for fund in current_data:
         code = fund.get('code')
         if code in nav_data:
-            fund['currentNav'] = nav_data[code]
-            print(f"Updated {code} -> {nav_data[code]}")
+            new_nav = nav_data[code]
+            old_nav = fund.get('currentNav', 0)
+
+            # หากมี NAV เดิม และ NAV มีการเปลี่ยนแปลง ให้คำนวณ % รายวัน
+            if old_nav > 0 and new_nav != old_nav:
+                pct_change = ((new_nav - old_nav) / old_nav) * 100
+                fund['prevNav'] = old_nav
+                fund['change1d'] = round(pct_change, 2)
+            
+            fund['currentNav'] = new_nav
+            print(f"Updated {code} -> NAV: {new_nav} (1D: {fund.get('change1d', 0)}%)")
 
     req = urllib.request.Request(db_url, data=json.dumps(current_data).encode('utf-8'), method='PUT')
     req.add_header('Content-Type', 'application/json')
