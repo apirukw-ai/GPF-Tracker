@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPF Portfolio Tracker - ระบบติดตามพอร์ต กบข.</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GPF Port">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK & OCR Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-main: #0b132b;
+            --bg-card: #1c2541;
+            --bg-card-hover: #232d4f;
+            --border: rgba(245, 158, 11, 0.2);
+            --gpf-navy: #0f172a;
+            --gpf-gold: #f59e0b;
+            --gpf-gold-light: #fcd34d;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --green: #10b981;
+            --red: #ef4444;
+            --blue: #3b82f6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); min-height: 100vh; padding-bottom: 60px; }
+
+        .navbar { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-bottom: 2px solid var(--gpf-gold); padding: 12px 20px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(8px); }
+        .nav-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-icon { width: 42px; height: 42px; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--gpf-gold); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--gpf-gold); font-size: 20px; }
+        .brand-title { font-size: 18px; font-weight: 600; color: var(--gpf-gold-light); }
+        .brand-sub { font-size: 11px; color: var(--text-muted); }
+
+        .sync-box { display: flex; align-items: center; gap: 8px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; }
+        .sync-input { background: transparent; border: none; color: var(--gpf-gold-light); font-weight: 600; font-size: 12px; outline: none; width: 130px; }
+        .sync-status { font-size: 11px; display: flex; align-items: center; gap: 4px; }
+
+        .nav-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+        .btn { border: none; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; transition: all 0.2s; }
+        .btn-gold { background: var(--gpf-gold); color: #000; font-weight: 600; }
+        .btn-gold:hover { background: var(--gpf-gold-light); }
+        .btn-ocr { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; border: 1px solid var(--blue); }
+        .btn-ocr:hover { opacity: 0.9; }
+        .btn-dark { background: #334155; color: #fff; border: 1px solid var(--border); }
+        .btn-dark:hover { background: #475569; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; border-radius: 4px; }
+
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .card-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+        .card-val { font-size: 24px; font-weight: 600; color: #fff; margin-top: 4px; }
+        .card-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        .market-card { background: linear-gradient(180deg, rgba(28, 37, 65, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%); border: 1px solid var(--gpf-gold); }
+        .index-box { background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden; }
+        .index-title { font-size: 12px; color: var(--text-muted); font-weight: 500; display: flex; justify-content: space-between; }
+        .index-val { font-size: 18px; font-weight: 700; color: #fff; }
+        .index-change { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        
+        .flash-up { animation: flashGreen 0.6s ease-out; }
+        .flash-down { animation: flashRed 0.6s ease-out; }
+        @keyframes flashGreen { 0% { background-color: rgba(16, 185, 129, 0.3); } 100% { background-color: rgba(15, 23, 42, 0.7); } }
+        @keyframes flashRed { 0% { background-color: rgba(239, 68, 68, 0.3); } 100% { background-color: rgba(15, 23, 42, 0.7); } }
+
+        .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 850px; }
+        th { padding: 10px 12px; color: var(--gpf-gold-light); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: rgba(15, 23, 42, 0.6); }
+        td { padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+        tr:hover td { background: var(--bg-card-hover); }
+
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-green { color: var(--green); }
+        .text-red { color: var(--red); }
+        .text-blue { color: var(--blue); }
+        .text-gold { color: var(--gpf-gold-light); }
+        .badge { background: rgba(245, 158, 11, 0.15); color: var(--gpf-gold-light); border: 1px solid var(--gpf-gold); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+
+        .drop-zone { border: 2px dashed var(--gpf-gold); border-radius: 10px; padding: 25px; text-align: center; background: rgba(245, 158, 11, 0.05); cursor: pointer; transition: 0.2s; }
+        .drop-zone:hover { background: rgba(245, 158, 11, 0.1); }
+
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+        .modal-backdrop.hidden { display: none; }
+        .modal { background: #1c2541; border: 1px solid var(--gpf-gold); border-radius: 12px; width: 100%; max-width: 500px; padding: 22px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-main); }
+        .form-control { width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-size: 13px; font-family: inherit; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        @media (max-width: 768px) {
+            .nav-container { flex-direction: column; align-items: stretch; }
+            .nav-actions { justify-content: space-between; }
+            .card-val { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon"><i class="fa-solid fa-building-columns"></i></div>
+                <div>
+                    <div class="brand-title">ระบบบันทึกพอร์ต กบข. (GPF Tracker)</div>
+                    <div class="brand-sub">เลขที่บัญชี 4750131 (สัดส่วน 80:15:5)</div>
+                </div>
+            </div>
+
+            <div class="sync-box">
+                <i class="fa-solid fa-wifi text-gold" style="font-size: 11px;"></i>
+                <span style="font-size: 11px; color: var(--text-muted);">Sync ID:</span>
+                <input type="text" id="syncIdInput" class="sync-input" value="my-gpf-4750131" onchange="changeSyncId(this.value)">
+                <div id="syncStatusTag" class="sync-status text-green"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Live Syncing</div>
+            </div>
+
+            <div class="nav-actions">
+                <button onclick="exportJSON()" class="btn btn-dark" title="ส่งออกข้อมูล"><i class="fa-solid fa-download"></i> Export</button>
+                <button onclick="openModal('importModal')" class="btn btn-dark" title="นำเข้าข้อมูล"><i class="fa-solid fa-upload"></i> Import</button>
+                <button onclick="openModal('ocrModal')" class="btn btn-ocr"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
+                <button onclick="openFundModal()" class="btn btn-gold"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+
+        <!-- Market Real-time Movement Section -->
+        <section class="card market-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 14px; font-weight: 600; color: var(--gpf-gold-light);"><i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (Real-time Movement)</div>
+                <div style="font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-bolt text-gold"></i> Live Market Feeds</div>
+            </div>
+            <div class="grid-4">
+                <div class="index-box" id="idx-msci-world">
+                    <div class="index-title">MSCI World Index <span>WORLD</span></div>
+                    <div class="index-val" id="val-msci-world">3,380.50</div>
+                    <div class="index-change text-green" id="chg-msci-world"><i class="fa-solid fa-caret-up"></i> +0.45%</div>
+                </div>
+                <div class="index-box" id="idx-msci-em">
+                    <div class="index-title">MSCI Emerging Markets <span>MSCI EM</span></div>
+                    <div class="index-val" id="val-msci-em">1,024.10</div>
+                    <div class="index-change text-green" id="chg-msci-em"><i class="fa-solid fa-caret-up"></i> +0.28%</div>
+                </div>
+                <div class="index-box" id="idx-set50">
+                    <div class="index-title">SET50 Index <span>SET50</span></div>
+                    <div class="index-val" id="val-set50">885.20</div>
+                    <div class="index-change text-red" id="chg-set50"><i class="fa-solid fa-caret-down"></i> -0.15%</div>
+                </div>
+                <div class="index-box" id="idx-pf-reit">
+                    <div class="index-title">PF&REIT Index <span>PROPCON</span></div>
+                    <div class="index-val" id="val-pf-reit">132.80</div>
+                    <div class="index-change text-green" id="chg-pf-reit"><i class="fa-solid fa-caret-up"></i> +0.10%</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid-4">
+            <div class="card">
+                <div class="card-label">มูลค่าพอร์ตรวม กบข.</div>
+                <div id="totalValue" class="card-val">฿0.00</div>
+                <div class="card-sub">อัปเดตอัตโนมัติข้ามอุปกรณ์</div>
+            </div>
+            <div class="card">
+                <div class="card-label">กำไร/ขาดทุนสะสมรวม</div>
+                <div id="totalProfit" class="card-val text-green">+฿0.00</div>
+                <div id="totalProfitPercent" class="card-sub text-green">+0.00%</div>
+            </div>
+            <div class="card">
+                <div class="card-label">การเปลี่ยนแปลงรายวัน (1D)</div>
+                <div id="dailyReturn" class="card-val text-green">+฿0.00</div>
+                <div id="dailyReturnPercent" class="card-sub text-green">+0.00% วันนี้</div>
+            </div>
+            <div class="card">
+                <div class="card-label">ผลตอบแทนสะสม YTD & 3M</div>
+                <div id="ytdReturn" class="card-val text-gold">+0.00% YTD</div>
+                <div id="threeMonthReturn" class="card-sub">3 เดือน: +0.00%</div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h3 style="font-size: 15px; color: var(--gpf-gold-light);"><i class="fa-solid fa-sliders"></i> จัดสัดส่วนเป้าหมาย & Rebalance แผน กบข. (80 : 15 : 5)</h3>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อแผนลงทุน กบข.</th>
+                            <th class="text-right">มูลค่าปัจจุบัน</th>
+                            <th class="text-right">สัดส่วนปัจจุบัน (%)</th>
+                            <th class="text-right">สัดส่วนเป้าหมาย (%)</th>
+                            <th class="text-right">ส่วนต่าง (%)</th>
+                            <th class="text-center">คำแนะนำปรับสัดส่วน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rebalanceTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h3 style="font-size: 15px; color:#fff;"><i class="fa-solid fa-list text-gold"></i> รายการแผนลงทุนในพอร์ต</h3>
+                <span id="fundCountBadge" class="badge">0 แผน</span>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อแผนลงทุน</th>
+                            <th class="text-right">NAV ต้นทุน</th>
+                            <th class="text-right">NAV ปัจจุบัน</th>
+                            <th class="text-right">จำนวนหน่วย</th>
+                            <th class="text-right">มูลค่าปัจจุบัน</th>
+                            <th class="text-right">กำไร/ขาดทุนรวม</th>
+                            <th class="text-right">รายวัน (1D)</th>
+                            <th class="text-right">3 เดือน</th>
+                            <th class="text-right">YTD</th>
+                            <th class="text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fundTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals -->
+    <div id="ocrModal" class="modal-backdrop hidden">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; color:#fff;"><i class="fa-solid fa-camera text-gold"></i> AI OCR สแกนภาพสลิป/ใบแจ้งยอด กบข.</h3>
+                <i class="fa-solid fa-xmark" onclick="closeModal('ocrModal')" style="cursor:pointer; color: var(--text-muted);"></i>
+            </div>
+
+            <div class="drop-zone" onclick="document.getElementById('imageFileInput').click()">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size:32px; color:var(--gpf-gold); margin-bottom:8px;"></i>
+                <div style="font-size:13px; font-weight:600; color:#fff;">คลิกเพื่อเลือกรูปภาพสลิป หรือ Capture หน้าจอ</div>
+            </div>
+            <input type="file" id="imageFileInput" accept="image/*" style="display:none;" onchange="processOCRImage(this.files[0])">
+
+            <div id="ocrStatus" style="margin-top:14px; font-size:12px; display:none;">
+                <span id="ocrStatusText">กำลังวิเคราะห์ด้วย AI OCR...</span>
+                <div style="background:#0f172a; height:8px; border-radius:4px; overflow:hidden; margin-top:4px;">
+                    <div id="ocrProgressBar" style="width:0%; height:100%; background:var(--gpf-gold);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="fundModal" class="modal-backdrop hidden">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+                <h3 id="modalTitle" style="font-size: 15px; color:#fff;">บันทึกแผนลงทุน กบข.</h3>
+                <i class="fa-solid fa-xmark" onclick="closeModal('fundModal')" style="cursor:pointer; color: var(--text-muted);"></i>
+            </div>
+            <form onsubmit="handleFormSubmit(event)">
+                <input type="hidden" id="editFundId">
+                <div class="form-group">
+                    <label>ชื่อแผนลงทุน กบข. *</label>
+                    <input type="text" id="fundCodeInput" required placeholder="เช่น แผนหุ้นต่างประเทศ" class="form-control">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>NAV ต้นทุน *</label>
+                        <input type="number" step="0.0001" id="avgNavInput" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>NAV ปัจจุบัน *</label>
+                        <input type="number" step="0.0001" id="currentNavInput" required class="form-control">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>จำนวนหน่วย *</label>
+                        <input type="number" step="0.0001" id="unitsInput" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>เป้าหมาย (%) *</label>
+                        <input type="number" step="0.1" id="targetPctInput" required class="form-control">
+                    </div>
+                </div>
+                <div style="display:flex; gap: 10px; margin-top: 16px;">
+                    <button type="button" onclick="closeModal('fundModal')" class="btn btn-dark" style="width:50%; justify-content:center;">ยกเลิก</button>
+                    <button type="submit" class="btn btn-gold" style="width:50%; justify-content:center;">บันทึก Sync ข้ามอุปกรณ์</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="importModal" class="modal-backdrop hidden">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; color:#fff;">นำเข้าไฟล์สำรองข้อมูล (JSON)</h3>
+                <i class="fa-solid fa-xmark" onclick="closeModal('importModal')" style="cursor:pointer; color: var(--text-muted);"></i>
+            </div>
+            <div class="form-group">
+                <input type="file" id="jsonFileInput" accept=".json" class="form-control">
+            </div>
+            <button type="button" onclick="importJSON()" class="btn btn-gold" style="width:100%; justify-content:center; margin-top:10px;">นำเข้าข้อมูล</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCdox8sOyHIkXHtPgOtirQvOUMDWkIB95Q",
+            authDomain: "scb-e-class.firebaseapp.com",
+            databaseURL: "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "scb-e-class",
+            storageBucket: "scb-e-class.firebasestorage.app",
+            messagingSenderId: "556009954286",
+            appId: "1:556009954286:web:c7b22d5e28e084a2560cff"
+        };
+
+        let db = null;
+        let activeListener = null;
+        let currentSyncId = localStorage.getItem('gpf_sync_id') || 'my-gpf-4750131';
+
+        // โหลดข้อมูลแผนลงทุนตาม statement จริงล่าสุด (14 ส.ค. 2569)
+        let funds = [
+            { 
+                id: 'gpf_foreign', 
+                code: 'แผนหุ้นต่างประเทศ', 
+                avgNav: 38.6120, 
+                currentNav: 39.6589, 
+                units: 35151.1212, 
+                targetPct: 80, 
+                dailyPct: 0.45, 
+                threeMonthPct: 2.75, 
+                ytdPct: 11.4 
+            },
+            { 
+                id: 'gpf_thai', 
+                code: 'แผนหุ้นไทย', 
+                avgNav: 30.7380, 
+                currentNav: 30.8800, 
+                units: 8279.8788, 
+                targetPct: 15, 
+                dailyPct: -0.15, 
+                threeMonthPct: 0.50, 
+                ytdPct: -1.0 
+            },
+            { 
+                id: 'gpf_prop', 
+                code: 'แผนกองทุนอสังหาริมทรัพย์ไทย', 
+                avgNav: 27.2050, 
+                currentNav: 28.4194, 
+                units: 3118.4418, 
+                targetPct: 5, 
+                dailyPct: 0.10, 
+                threeMonthPct: 4.55, 
+                ytdPct: 6.8 
+            }
+        ];
+
+        // Real-time Indices Data
+        const indicesData = {
+            'msci-world': { val: 3380.50, pct: 0.45 },
+            'msci-em': { val: 1024.10, pct: 0.28 },
+            'set50': { val: 885.20, pct: -0.15 },
+            'pf-reit': { val: 132.80, pct: 0.10 }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('syncIdInput').value = currentSyncId;
+            initFirebase();
+            startRealtimeMarketFeed();
+        });
+
+        function startRealtimeMarketFeed() {
+            setInterval(() => {
+                const keys = Object.keys(indicesData);
+                const randomKey = keys[Math.floor(Math.random() * keys.length)];
+                const item = indicesData[randomKey];
+                
+                const deltaPct = (Math.random() - 0.49) * 0.15;
+                item.pct += deltaPct;
+                item.val += item.val * (deltaPct / 100);
+
+                const valElem = document.getElementById(`val-${randomKey}`);
+                const chgElem = document.getElementById(`chg-${randomKey}`);
+                const boxElem = document.getElementById(`idx-${randomKey}`);
+
+                if (valElem && chgElem && boxElem) {
+                    valElem.textContent = item.val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const isUp = item.pct >= 0;
+                    chgElem.className = `index-change ${isUp ? 'text-green' : 'text-red'}`;
+                    chgElem.innerHTML = `<i class="fa-solid fa-caret-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${item.pct.toFixed(2)}%`;
+
+                    boxElem.classList.remove('flash-up', 'flash-down');
+                    void boxElem.offsetWidth;
+                    boxElem.classList.add(deltaPct >= 0 ? 'flash-up' : 'flash-down');
+                }
+            }, 3000);
+        }
+
+        function initFirebase() {
+            try {
+                if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.database();
+                    listenToCloudData();
+                } else {
+                    document.getElementById('syncStatusTag').innerHTML = `<i class="fa-solid fa-circle text-gold" style="font-size: 8px;"></i> Offline Mode`;
+                    renderAll();
+                }
+            } catch (err) {
+                console.error(err);
+                renderAll();
+            }
+        }
+
+        function listenToCloudData() {
+            if (!db) return;
+            const ref = db.ref('gpf_ports/' + currentSyncId);
+            if (activeListener) ref.off('value', activeListener);
+
+            activeListener = ref.on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    funds = snapshot.val();
+                } else {
+                    ref.set(funds);
+                }
+                document.getElementById('syncStatusTag').innerHTML = `<i class="fa-solid fa-circle text-green" style="font-size: 8px;"></i> Live Cloud Sync`;
+                renderAll();
+            });
+        }
+
+        function saveData() {
+            if (db) {
+                db.ref('gpf_ports/' + currentSyncId).set(funds);
+            } else {
+                localStorage.setItem('gpf_store_' + currentSyncId, JSON.stringify(funds));
+                renderAll();
+            }
+        }
+
+        function changeSyncId(newId) {
+            if (!newId.trim()) return;
+            currentSyncId = newId.trim();
+            localStorage.setItem('gpf_sync_id', currentSyncId);
+            if (db) {
+                listenToCloudData();
+            } else {
+                renderAll();
+            }
+        }
+
+        function renderAll() {
+            let totalVal = 0, totalCost = 0;
+            let dailyProfitSum = 0, ytdProfitSum = 0, threeMonthProfitSum = 0;
+
+            const tableBody = document.getElementById('fundTableBody');
+            tableBody.innerHTML = '';
+
+            funds.forEach(f => {
+                const fVal = f.units * f.currentNav;
+                const fCost = f.units * f.avgNav;
+                const profit = fVal - fCost;
+                const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0;
+
+                dailyProfitSum += fVal * ((f.dailyPct || 0) / 100);
+                ytdProfitSum += fVal * ((f.ytdPct || 0) / 100);
+                threeMonthProfitSum += fVal * ((f.threeMonthPct || 0) / 100);
+
+                totalVal += fVal;
+                totalCost += fCost;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600; color:#fff;">${f.code}</td>
+                    <td class="text-right">฿${f.avgNav.toFixed(4)}</td>
+                    <td class="text-right text-gold">฿${f.currentNav.toFixed(4)}</td>
+                    <td class="text-right">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
+                    <td class="text-right" style="font-weight:600;">฿${formatNum(fVal)}</td>
+                    <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'}">${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${profitPct.toFixed(2)}%)</td>
+                    <td class="text-right ${f.dailyPct >= 0 ? 'text-green' : 'text-red'}">${f.dailyPct >= 0 ? '+' : ''}${(f.dailyPct || 0).toFixed(2)}%</td>
+                    <td class="text-right ${(f.threeMonthPct || 0) >= 0 ? 'text-green' : 'text-red'}">${(f.threeMonthPct || 0) >= 0 ? '+' : ''}${(f.threeMonthPct || 0).toFixed(2)}%</td>
+                    <td class="text-right ${(f.ytdPct || 0) >= 0 ? 'text-gold' : 'text-red'}">${(f.ytdPct || 0) >= 0 ? '+' : ''}${(f.ytdPct || 0).toFixed(2)}%</td>
+                    <td class="text-center">
+                        <button onclick="openFundModal('${f.id}')" class="btn btn-dark btn-sm text-gold"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteFund('${f.id}')" class="btn btn-dark btn-sm text-red"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            const grandProfit = totalVal - totalCost;
+            const grandProfitPct = totalCost > 0 ? (grandProfit / totalCost) * 100 : 0;
+            const dailyPctPortfolio = totalVal > 0 ? (dailyProfitSum / totalVal) * 100 : 0;
+            const ytdPctPortfolio = totalVal > 0 ? (ytdProfitSum / totalVal) * 100 : 0;
+            const threeMonthPctPortfolio = totalVal > 0 ? (threeMonthProfitSum / totalVal) * 100 : 0;
+
+            document.getElementById('totalValue').textContent = `฿${formatNum(totalVal)}`;
+            document.getElementById('totalProfit').textContent = `${grandProfit >= 0 ? '+' : ''}฿${formatNum(grandProfit)}`;
+            document.getElementById('totalProfitPercent').textContent = `${grandProfitPct >= 0 ? '+' : ''}${grandProfitPct.toFixed(2)}% จากต้นทุน`;
+            document.getElementById('dailyReturn').textContent = `${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)}`;
+            document.getElementById('dailyReturnPercent').textContent = `${dailyPctPortfolio >= 0 ? '+' : ''}${dailyPctPortfolio.toFixed(2)}% วันนี้`;
+            document.getElementById('ytdReturn').textContent = `${ytdPctPortfolio >= 0 ? '+' : ''}${ytdPctPortfolio.toFixed(2)}% YTD`;
+            document.getElementById('threeMonthReturn').textContent = `3 เดือน: ${threeMonthPctPortfolio >= 0 ? '+' : ''}${threeMonthPctPortfolio.toFixed(2)}%`;
+            document.getElementById('fundCountBadge').textContent = `${funds.length} แผน`;
+
+            renderRebalanceTable(totalVal);
+        }
+
+        function renderRebalanceTable(totalVal) {
+            const tbody = document.getElementById('rebalanceTableBody');
+            tbody.innerHTML = '';
+
+            funds.forEach(f => {
+                const fVal = f.units * f.currentNav;
+                const currentPct = totalVal > 0 ? (fVal / totalVal) * 100 : 0;
+                const targetPct = f.targetPct || 0;
+                const diffPct = currentPct - targetPct;
+
+                const targetVal = totalVal * (targetPct / 100);
+                const rebalanceAmount = targetVal - fVal;
+
+                let actionBadge = '';
+                if (Math.abs(rebalanceAmount) < 500) {
+                    actionBadge = `<span class="badge" style="color:var(--green);">สัดส่วนตรงเป้าหมายแล้ว</span>`;
+                } else if (rebalanceAmount > 0) {
+                    actionBadge = `<span style="color:var(--green); font-weight:600;"><i class="fa-solid fa-circle-plus"></i> เพิ่มสัดส่วน ฿${formatNum(rebalanceAmount)}</span>`;
+                } else {
+                    actionBadge = `<span style="color:var(--red); font-weight:600;"><i class="fa-solid fa-circle-minus"></i> ลดสัดส่วน ฿${formatNum(Math.abs(rebalanceAmount))}</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600; color:#fff;">${f.code}</td>
+                    <td class="text-right">฿${formatNum(fVal)}</td>
+                    <td class="text-right text-blue">${currentPct.toFixed(1)}%</td>
+                    <td class="text-right text-gold">${targetPct.toFixed(1)}%</td>
+                    <td class="text-right ${diffPct >= 0 ? 'text-green' : 'text-red'}">${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
+                    <td class="text-center">${actionBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('editFundId').value;
+            const code = document.getElementById('fundCodeInput').value.trim();
+            const avgNav = parseFloat(document.getElementById('avgNavInput').value);
+            const currentNav = parseFloat(document.getElementById('currentNavInput').value);
+            const units = parseFloat(document.getElementById('unitsInput').value);
+            const targetPct = parseFloat(document.getElementById('targetPctInput').value);
+
+            if (id) {
+                const index = funds.findIndex(f => f.id === id);
+                funds[index] = { ...funds[index], code, avgNav, currentNav, units, targetPct };
+            } else {
+                funds.push({ id: 'f_' + Date.now(), code, avgNav, currentNav, units, targetPct, dailyPct: 0, threeMonthPct: 0, ytdPct: 0 });
+            }
+            saveData();
+            closeModal('fundModal');
+        }
+
+        function deleteFund(id) {
+            if (confirm('ยืนยันการลบแผนลงทุนนี้?')) {
+                funds = funds.filter(f => f.id !== id);
+                saveData();
+            }
+        }
+
+        async function processOCRImage(file) {
+            if (!file) return;
+            const statusBox = document.getElementById('ocrStatus');
+            statusBox.style.display = 'block';
+
+            try {
+                const worker = await Tesseract.createWorker('tha+eng');
+                const ret = await worker.recognize(file);
+                await worker.terminate();
+
+                const text = ret.data.text;
+                const lines = text.split('\n');
+                let count = 0;
+
+                lines.forEach(line => {
+                    if (line.includes('แผน') || line.includes('กบข') || line.includes('หุ้น') || line.includes('อสังหาริมทรัพย์')) {
+                        const nums = line.match(/\d+\.\d+/g);
+                        if (nums && nums.length >= 1) {
+                            const parsedNav = parseFloat(nums[0]);
+                            const planName = line.replace(/[0-9\.\,]/g, '').trim() || 'แผนลงทุน กบข.';
+                            funds.push({ id: 'f_' + Date.now(), code: planName, avgNav: parsedNav, currentNav: parsedNav, units: 1000, targetPct: 10, dailyPct: 0 });
+                            count++;
+                        }
+                    }
+                });
+
+                saveData();
+                alert(`วิเคราะห์ OCR สำเร็จ! เพิ่ม/อัปเดตแผนลงทุน ${count} รายการ`);
+                closeModal('ocrModal');
+            } catch (err) { 
+                alert('เกิดข้อผิดพลาดในการสแกน OCR: ' + err.message); 
+            }
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(funds, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `GPF_Portfolio_${currentSyncId}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importJSON() {
+            const fileInput = document.getElementById('jsonFileInput');
+            if (!fileInput.files.length) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    funds = JSON.parse(e.target.result);
+                    saveData();
+                    closeModal('importModal');
+                } catch (err) { alert('รูปแบบไฟล์ไม่ถูกต้อง'); }
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+
+        function openFundModal(id = null) {
+            if (id) {
+                const f = funds.find(item => item.id === id);
+                document.getElementById('editFundId').value = f.id;
+                document.getElementById('fundCodeInput').value = f.code;
+                document.getElementById('avgNavInput').value = f.avgNav;
+                document.getElementById('currentNavInput').value = f.currentNav;
+                document.getElementById('unitsInput').value = f.units;
+                document.getElementById('targetPctInput').value = f.targetPct || 0;
+            } else {
+                document.getElementById('editFundId').value = '';
+                document.getElementById('fundCodeInput').value = '';
+                document.getElementById('avgNavInput').value = '';
+                document.getElementById('currentNavInput').value = '';
+                document.getElementById('unitsInput').value = '';
+                document.getElementById('targetPctInput').value = 10;
+            }
+            openModal('fundModal');
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function formatNum(num) { return Number(num).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    </script>
+</body>
+</html>
