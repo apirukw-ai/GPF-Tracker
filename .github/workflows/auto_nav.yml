@@ -1,0 +1,22 @@
+name: Auto Update GPF NAV
+
+on:
+  schedule:
+    # รันทุกวันจันทร์-ศุกร์ เวลา 19:30 น. (เวลาไทย = 12:30 UTC)
+    - cron: '30 12 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  update-nav:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run NAV Update Script
+        run: python update_nav.py
