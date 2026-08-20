@@ -12,11 +12,9 @@ def fetch_gpf_nav():
     html = urllib.request.urlopen(req).read().decode('utf-8')
 
     nav_data = {}
-    # แยกอ่านทีละแถวของตาราง HTML (<tr>...</tr>) เพื่อล็อคค่า NAV ให้ตรงแผน
     rows = re.findall(r'<tr.*?>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
 
     for row in rows:
-        # ค้นหาตัวเลข NAV (ทศนิยม 4 ตำแหน่ง) ในแถวนั้นๆ
         nav_match = re.search(r'(\d+\.\d{4})', row)
         if not nav_match:
             continue
@@ -48,14 +46,14 @@ def update_firebase(nav_data):
             new_nav = nav_data[code]
             old_nav = fund.get('currentNav', 0)
 
-            # หากมี NAV เดิม และ NAV มีการเปลี่ยนแปลง ให้คำนวณ % รายวัน
+            # คำนวณ % การเปลี่ยนแปลง และบันทึกในชื่อ dailyPct ให้ตรงกับหน้าเว็บ
             if old_nav > 0 and new_nav != old_nav:
                 pct_change = ((new_nav - old_nav) / old_nav) * 100
                 fund['prevNav'] = old_nav
-                fund['change1d'] = round(pct_change, 2)
+                fund['dailyPct'] = round(pct_change, 2)
             
             fund['currentNav'] = new_nav
-            print(f"Updated {code} -> NAV: {new_nav} (1D: {fund.get('change1d', 0)}%)")
+            print(f"Updated {code} -> NAV: {new_nav} (1D: {fund.get('dailyPct', 0)}%)")
 
     req = urllib.request.Request(db_url, data=json.dumps(current_data).encode('utf-8'), method='PUT')
     req.add_header('Content-Type', 'application/json')
