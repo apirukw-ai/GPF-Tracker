@@ -46,7 +46,6 @@
         th { font-weight: 700; color: #f59e0b; text-align: left; font-size: 0.8rem; }
         .hidden { display: none !important; }
 
-        /* เอฟเฟกต์ไฟกระพริบขณะอัปเดตข้อมูล */
         @keyframes flash-update {
             0% { background-color: rgba(245, 158, 11, 0.3); }
             100% { background-color: rgba(15, 23, 42, 0.9); }
@@ -58,7 +57,6 @@
 </head>
 <body class="py-6 px-4">
 
-    <!-- Container ล็อคความกว้างให้อยู่ตรงกลางจอ -->
     <div class="max-w-7xl mx-auto space-y-4">
 
         <!-- Header Section -->
@@ -90,7 +88,7 @@
             </div>
         </header>
 
-        <!-- Real-time Market Movement (เรียงลำดับ MSCI World, MSCI EM, SET50, PF & REIT) -->
+        <!-- Real-time Market Movement -->
         <div class="card-gold p-3">
             <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
@@ -101,10 +99,8 @@
                 </span>
             </div>
 
-            <!-- Grid กล่องนิ่ง 4 ตัวเลขอ้างอิง -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="marketFeedGrid">
                 
-                <!-- 1. MSCI World (URTH) -->
                 <div id="card-urth" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
@@ -117,7 +113,6 @@
                     </div>
                 </div>
 
-                <!-- 2. MSCI EM (EEM) -->
                 <div id="card-eem" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
@@ -130,7 +125,6 @@
                     </div>
                 </div>
 
-                <!-- 3. SET50 Index (TDEX) -->
                 <div id="card-set50" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-amber-500/20 text-amber-400 font-bold text-[10px]">S</span>
@@ -143,7 +137,6 @@
                     </div>
                 </div>
 
-                <!-- 4. PF & REIT (CPNREIT) -->
                 <div id="card-reit" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-purple-500/20 text-purple-400 font-bold text-[10px]">P</span>
@@ -281,14 +274,27 @@
 
     <script>
         const DB_URL = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json";
-        const YTD_BASE_VAL = 1340202.52; // กำหนดมูลค่าพอร์ตรวม ณ 1 ม.ค. 69
+        const YTD_BASE_VAL = 1340202.52;
         let funds = [];
 
         function formatNum(num) {
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        // ฟังก์ชันอัปเดตกระพริบไฟ
+        // ฟังก์ชันกำหนดสีป้ายชื่อแผนตามประเภทสินทรัพย์
+        function getPlanBadge(code) {
+            if (!code) return '';
+            if (code.includes('ตราสารหนี้') || code.includes('ตลาดเงิน')) {
+                return `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">${code}</span>`;
+            } else if (code.includes('ต่างประเทศ') || code.includes('หุ้นต่างประเทศ')) {
+                return `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/30">${code}</span>`;
+            } else if (code.includes('อสังหา') || code.includes('REIT')) {
+                return `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/30">${code}</span>`;
+            } else {
+                return `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">${code}</span>`;
+            }
+        }
+
         function triggerMarketFlash() {
             const keys = ['urth', 'eem', 'set50', 'reit'];
             keys.forEach(k => {
@@ -343,7 +349,7 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-weight:600; color:#fff;">${f.code}</td>
+                    <td>${getPlanBadge(f.code)}</td>
                     <td class="text-right">฿${f.avgNav.toFixed(4)}</td>
                     <td class="text-right text-gold font-semibold">฿${f.currentNav.toFixed(4)}</td>
                     <td class="text-right">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
@@ -369,7 +375,6 @@
             const totalProfitPct = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
             const totalDailyPct = totalVal > 0 ? (dailyProfitSum * 100) / totalVal : 0;
 
-            // คำนวณผลตอบแทน YTD รวม โดยใชัมูลค่าฐาน 1,340,202.52 บาท
             const baseStartVal = YTD_BASE_VAL > 0 ? YTD_BASE_VAL : ytdValStartSum;
             const totalYtdProfitBaht = totalVal - baseStartVal;
             const totalYtdPct = baseStartVal > 0 ? (totalYtdProfitBaht / baseStartVal) * 100 : 0;
@@ -405,7 +410,7 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-weight:600; color:#fff;">${f.code}</td>
+                    <td>${getPlanBadge(f.code)}</td>
                     <td class="text-right">฿${formatNum(fVal)}</td>
                     <td class="text-right">${currentPct.toFixed(1)}%</td>
                     <td class="text-right">${targetPct.toFixed(1)}%</td>
@@ -527,7 +532,6 @@
             }
         }
 
-        // รีเฟรชไฟกระพริบทุกๆ 30 วินาที
         setInterval(triggerMarketFlash, 30000);
 
         loadData();
