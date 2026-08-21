@@ -90,7 +90,7 @@
             </div>
         </header>
 
-        <!-- Real-time Market Movement (Static Grid Badges + ไฟกระพริบ) -->
+        <!-- Real-time Market Movement (เรียงลำดับ MSCI World, MSCI EM, SET50, PF & REIT) -->
         <div class="card-gold p-3">
             <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
@@ -101,10 +101,23 @@
                 </span>
             </div>
 
-            <!-- Grid กล่องนิ่ง 4 ตัวเลขอ้างอิง (ไม่เลื่อน ไม่เวียนหัว) -->
+            <!-- Grid กล่องนิ่ง 4 ตัวเลขอ้างอิง -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="marketFeedGrid">
                 
-                <!-- Badge 1: MSCI EM -->
+                <!-- 1. MSCI World (URTH) -->
+                <div id="card-urth" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
+                        <span class="font-medium text-gray-200">MSCI World (URTH)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-semibold">
+                        <span id="price-urth" class="text-white">207.83</span>
+                        <span id="change-urth" class="text-red text-[11px]">-1.39 (-0.66%)</span>
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    </div>
+                </div>
+
+                <!-- 2. MSCI EM (EEM) -->
                 <div id="card-eem" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
@@ -117,7 +130,7 @@
                     </div>
                 </div>
 
-                <!-- Badge 2: SET50 (TDEX ETF) แก้ไขเครื่องหมาย ! เรียบร้อย -->
+                <!-- 3. SET50 Index (TDEX) -->
                 <div id="card-set50" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-amber-500/20 text-amber-400 font-bold text-[10px]">S</span>
@@ -130,7 +143,7 @@
                     </div>
                 </div>
 
-                <!-- Badge 3: PF & REIT (CPNREIT) แก้ไขเครื่องหมาย ! เรียบร้อย -->
+                <!-- 4. PF & REIT (CPNREIT) -->
                 <div id="card-reit" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-purple-500/20 text-purple-400 font-bold text-[10px]">P</span>
@@ -139,19 +152,6 @@
                     <div class="flex items-center gap-1.5 font-semibold">
                         <span id="price-reit" class="text-white">11.40</span>
                         <span id="change-reit" class="text-red text-[11px]">-0.10 (-0.87%)</span>
-                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    </div>
-                </div>
-
-                <!-- Badge 4: MSCI World -->
-                <div id="card-urth" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
-                    <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
-                        <span class="font-medium text-gray-200">MSCI World (URTH)</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 font-semibold">
-                        <span id="price-urth" class="text-white">207.83</span>
-                        <span id="change-urth" class="text-red text-[11px]">-1.39 (-0.66%)</span>
                         <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     </div>
                 </div>
@@ -179,7 +179,7 @@
             <div class="card-subtle p-3.5">
                 <p class="text-xs text-gray-400 font-medium mb-1">ผลตอบแทน YTD รวม</p>
                 <h2 id="ytdProfitDisplay" class="text-xl font-extrabold text-gold">0.00% YTD</h2>
-                <p id="ytdProfitSub" class="text-[10px] text-gray-400 mt-1">เทียบกับต้นปี</p>
+                <p id="ytdProfitSub" class="text-[10px] text-gray-400 mt-1">เทียบกับ 1 ม.ค. 69 (฿1,340,202.52)</p>
             </div>
         </div>
 
@@ -281,15 +281,16 @@
 
     <script>
         const DB_URL = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json";
+        const YTD_BASE_VAL = 1340202.52; // กำหนดมูลค่าพอร์ตรวม ณ 1 ม.ค. 69
         let funds = [];
 
         function formatNum(num) {
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        // ฟังก์ชันจำลอง/อัปเดตราคาตลาดพร้อมไฟกระพริบ
+        // ฟังก์ชันอัปเดตกระพริบไฟ
         function triggerMarketFlash() {
-            const keys = ['eem', 'set50', 'reit', 'urth'];
+            const keys = ['urth', 'eem', 'set50', 'reit'];
             keys.forEach(k => {
                 const card = document.getElementById(`card-${k}`);
                 if (card) {
@@ -367,8 +368,11 @@
             const totalProfit = totalVal - totalCost;
             const totalProfitPct = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
             const totalDailyPct = totalVal > 0 ? (dailyProfitSum * 100) / totalVal : 0;
-            const totalYtdProfitBaht = totalVal - ytdValStartSum;
-            const totalYtdPct = ytdValStartSum > 0 ? (totalYtdProfitBaht / ytdValStartSum) * 100 : 0;
+
+            // คำนวณผลตอบแทน YTD รวม โดยใชัมูลค่าฐาน 1,340,202.52 บาท
+            const baseStartVal = YTD_BASE_VAL > 0 ? YTD_BASE_VAL : ytdValStartSum;
+            const totalYtdProfitBaht = totalVal - baseStartVal;
+            const totalYtdPct = baseStartVal > 0 ? (totalYtdProfitBaht / baseStartVal) * 100 : 0;
 
             document.getElementById('totalValDisplay').innerText = `฿${formatNum(totalVal)}`;
             
@@ -383,10 +387,10 @@
             document.getElementById('dailyProfitSub').innerText = `${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}% วันนี้`;
 
             document.getElementById('ytdProfitDisplay').innerText = `${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}% YTD`;
-            document.getElementById('ytdProfitSub').innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับต้นปี`;
+            document.getElementById('ytdProfitSub').innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับ 1 ม.ค. 69`;
 
             renderAllocation(totalVal);
-            triggerMarketFlash(); // กระพริบไฟเมื่อโหลดข้อมูลเสร็จ
+            triggerMarketFlash(); 
         }
 
         function renderAllocation(totalVal) {
