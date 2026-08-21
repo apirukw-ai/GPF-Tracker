@@ -3,118 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกพอร์ต กบข. (GPF Tracker)</title>
+    <title>GPF Portfolio Tracker - ระบบบันทึกพอร์ต กบข.</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-    :root {
-        --bg-dark: #0a0f1d;
-        --card-bg: #111a2e;
-        --border-color: #1e2d4a;
-        --gpf-gold: #f59e0b;
-        --text-muted: #94a3b8;
-    }
-    body { 
-        background-color: var(--bg-dark); 
-        color: #f8fafc; 
-        font-family: system-ui, -apple-system, sans-serif; 
-    }
-    .card { 
-        background-color: var(--card-bg); 
-        border: 1px solid var(--border-color); 
-        border-radius: 0.75rem; 
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    }
-    .text-gold { color: var(--gpf-gold); }
-    .text-green { color: #10b981; }
-    .text-red { color: #ef4444; }
-    .btn-gold { background-color: var(--gpf-gold); color: #0a0f1d; font-weight: 600; }
-    .btn-gold:hover { background-color: #d97706; }
-    .btn-dark { background-color: #1e2d4a; color: #fff; }
-    .btn-dark:hover { background-color: #2a3e66; }
-    .btn-blue { background-color: #0284c7; color: #fff; }
-    .btn-blue:hover { background-color: #0369a1; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); }
-    th { font-weight: 600; color: var(--text-muted); text-align: left; }
-    .hidden { display: none !important; }
-</style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: #111726;
+            --border-gold: rgba(245, 158, 11, 0.35);
+            --border-subtle: #1e293b;
+            --gpf-gold: #f59e0b;
+            --text-muted: #94a3b8;
+        }
+        body { 
+            background-color: var(--bg-dark); 
+            color: #e2e8f0; 
+            font-family: system-ui, -apple-system, sans-serif; 
+        }
+        .card-gold { 
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-gold); 
+            border-radius: 0.75rem; 
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+        }
+        .card-subtle {
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-subtle); 
+            border-radius: 0.75rem; 
+        }
+        .text-gold { color: var(--gpf-gold); }
+        .text-green { color: #10b981; }
+        .text-red { color: #ef4444; }
+        .btn-gold { background-color: var(--gpf-gold); color: #000; font-weight: 700; }
+        .btn-gold:hover { background-color: #d97706; }
+        .btn-dark { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+        .btn-dark:hover { background-color: #334155; color: #fff; }
+        .btn-blue { background-color: #0284c7; color: #fff; font-weight: 600; }
+        .btn-blue:hover { background-color: #0369a1; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.85rem 1rem; border-bottom: 1px solid #1e293b; }
+        th { font-weight: 700; color: #f59e0b; text-align: left; font-size: 0.85rem; }
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body class="p-4 md:p-6">
 
     <!-- Header Section -->
     <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div class="flex items-center gap-3">
-            <i class="fa-solid fa-building-columns text-3xl text-gold"></i>
+            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                <i class="fa-solid fa-building-columns text-2xl text-gold"></i>
+            </div>
             <div>
-                <h1 class="text-xl font-bold text-white">ระบบบันทึกพอร์ต กบข. (GPF Tracker)</h1>
-                <p class="text-xs text-gray-400">Sync ID: <span id="syncIdDisplay" class="text-gold">my-gpf-4750131</span> <span class="text-green ml-2">● Live Cloud Sync</span></p>
+                <h1 class="text-xl font-bold text-white tracking-wide">ระบบบันทึกพอร์ต กบข. (GPF Tracker)</h1>
+                <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                    <span>Sync ID: <strong id="syncIdDisplay" class="text-gold">my-gpf-4750131</strong></span>
+                    <span class="bg-emerald-950 text-green px-2 py-0.5 rounded-full text-[10px] border border-emerald-800 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></span> Live Cloud Sync
+                    </span>
+                </div>
             </div>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button onclick="exportData()" class="btn btn-dark px-3 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-download"></i> Export</button>
-            <button onclick="importData()" class="btn btn-dark px-3 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-upload"></i> Import</button>
-            <button onclick="openOcrModal()" class="btn btn-blue px-3 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
-            <button onclick="openFundModal()" class="btn btn-gold px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
+            <button onclick="exportData()" class="btn btn-dark px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-download"></i> Export</button>
+            <button onclick="importData()" class="btn btn-dark px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-upload"></i> Import</button>
+            <button onclick="openOcrModal()" class="btn btn-blue px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-lg shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
+            <button onclick="openFundModal()" class="btn btn-gold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-lg shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
         </div>
     </header>
 
-    <!-- Real-time Market Movement Ticker -->
-    <div class="card p-4 mb-6">
+    <!-- Real-time Market Movement Ticker (กรอบทองดั้งเดิม) -->
+    <div class="card-gold p-4 mb-6">
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-gold"></i> ดัชนีอ้างอิงตลาดการเงิน (Real-time Movement)
+            <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (Real-time Movement)
             </h3>
-            <span class="text-xs text-gold flex items-center gap-1"><i class="fa-solid fa-bolt"></i> Live Market Feeds</span>
+            <span class="text-[11px] text-amber-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-bolt"></i> Live Market Feeds</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div class="border-r border-gray-800 pr-2">
-                <p class="text-xs text-gray-400">MSCI World Index <span class="text-[10px] text-gray-500">WORLD</span></p>
-                <p class="text-lg font-bold text-white">3,379.61</p>
-                <p class="text-xs text-green">+0.42%</p>
+            <div class="border-r border-slate-800 pr-2">
+                <p class="text-xs text-gray-400 font-medium">MSCI World Index <span class="text-[10px] text-gray-500 float-right">WORLD</span></p>
+                <p class="text-lg font-bold text-white mt-1">3,377.22</p>
+                <p class="text-xs text-green font-semibold">+0.35%</p>
             </div>
-            <div class="border-r border-gray-800 pr-2">
-                <p class="text-xs text-gray-400">MSCI Emerging Markets <span class="text-[10px] text-gray-500">MSCI EM</span></p>
-                <p class="text-lg font-bold text-white">1,024.71</p>
-                <p class="text-xs text-green">+0.34%</p>
+            <div class="border-r border-slate-800 pr-2">
+                <p class="text-xs text-gray-400 font-medium">MSCI Emerging Markets <span class="text-[10px] text-gray-500 float-right">MSCI EM</span></p>
+                <p class="text-lg font-bold text-white mt-1">1,023.49</p>
+                <p class="text-xs text-green font-semibold">+0.22%</p>
             </div>
-            <div class="border-r border-gray-800 pr-2">
-                <p class="text-xs text-gray-400">SET50 Index <span class="text-[10px] text-gray-500">SET50</span></p>
-                <p class="text-lg font-bold text-white">885.00</p>
-                <p class="text-xs text-red">-0.17%</p>
+            <div class="border-r border-slate-800 pr-2">
+                <p class="text-xs text-gray-400 font-medium">SET50 Index <span class="text-[10px] text-gray-500 float-right">SET50</span></p>
+                <p class="text-lg font-bold text-white mt-1">885.80</p>
+                <p class="text-xs text-red font-semibold">-0.08%</p>
             </div>
             <div>
-                <p class="text-xs text-gray-400">PF&REIT Index <span class="text-[10px] text-gray-500">PROPCON</span></p>
-                <p class="text-lg font-bold text-white">132.84</p>
-                <p class="text-xs text-green">+0.15%</p>
+                <p class="text-xs text-gray-400 font-medium">PF&REIT Index <span class="text-[10px] text-gray-500 float-right">PROPCON</span></p>
+                <p class="text-lg font-bold text-white mt-1">133.12</p>
+                <p class="text-xs text-green font-semibold">+0.34%</p>
             </div>
         </div>
     </div>
 
     <!-- Top Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="card p-4">
-            <p class="text-xs text-gray-400 mb-1">มูลค่าพอร์ตรวม กบข.</p>
-            <h2 id="totalValDisplay" class="text-2xl font-bold text-white">฿0.00</h2>
+        <div class="card-subtle p-4">
+            <p class="text-xs text-gray-400 font-medium mb-1">มูลค่าพอร์ตรวม กบข.</p>
+            <h2 id="totalValDisplay" class="text-2xl font-extrabold text-white">฿0.00</h2>
+            <p class="text-[11px] text-gray-500 mt-1">อัปเดตอัตโนมัติทุกวันทำการ</p>
         </div>
-        <div class="card p-4">
-            <p class="text-xs text-gray-400 mb-1">กำไร/ขาดทุนสะสมรวม</p>
-            <h2 id="totalProfitDisplay" class="text-2xl font-bold">฿0.00</h2>
+        <div class="card-subtle p-4">
+            <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนสะสมรวม</p>
+            <h2 id="totalProfitDisplay" class="text-2xl font-extrabold">฿0.00</h2>
+            <p id="totalProfitSub" class="text-[11px] text-gray-400 mt-1">0.00% จากต้นทุน</p>
         </div>
-        <div class="card p-4">
-            <p class="text-xs text-gray-400 mb-1">การเปลี่ยนแปลงวันนี้</p>
-            <h2 id="dailyProfitDisplay" class="text-2xl font-bold">฿0.00</h2>
+        <div class="card-subtle p-4">
+            <p class="text-xs text-gray-400 font-medium mb-1">ผลตอบแทนวันนี้</p>
+            <h2 id="dailyProfitDisplay" class="text-2xl font-extrabold">฿0.00</h2>
+            <p id="dailyProfitSub" class="text-[11px] text-gray-400 mt-1">0.00% วันนี้</p>
         </div>
-        <div class="card p-4">
-            <p class="text-xs text-gray-400 mb-1">ผลตอบแทน YTD รวม</p>
-            <h2 id="ytdProfitDisplay" class="text-2xl font-bold text-gold">0.00% YTD</h2>
+        <div class="card-subtle p-4">
+            <p class="text-xs text-gray-400 font-medium mb-1">ผลตอบแทน YTD รวม</p>
+            <h2 id="ytdProfitDisplay" class="text-2xl font-extrabold text-gold">0.00% YTD</h2>
+            <p id="ytdProfitSub" class="text-[11px] text-gray-400 mt-1">เทียบกับต้นปี</p>
         </div>
     </div>
 
     <!-- Target Allocation Table (ตัดคำแนะนำปรับสัดส่วนออกแล้ว) -->
-    <div class="card p-4 mb-6 overflow-x-auto">
-        <h3 class="text-md font-bold text-gold mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-chart-pie"></i> จัดสัดส่วนเป้าหมาย & Rebalance แผน กบข.
+    <div class="card-subtle p-4 mb-6 overflow-x-auto">
+        <h3 class="text-sm font-bold text-gold mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมายแผน กบข.
         </h3>
         <table>
             <thead>
@@ -126,15 +143,17 @@
                     <th class="text-right">ส่วนต่าง (%)</th>
                 </tr>
             </thead>
-            <tbody id="allocTableBody"></tbody>
+            <tbody id="allocTableBody" class="text-sm"></tbody>
         </table>
     </div>
 
-    <!-- Main Funds Table (ตัด 3 เดือนออก / เปลี่ยนเป็น ผลตอบแทนวันนี้ และ YTD ตามสูตร) -->
-    <div class="card p-4 overflow-x-auto">
-        <h3 class="text-md font-bold text-white mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-list-check"></i> รายการแผนลงทุนในพอร์ต
-        </h3>
+    <!-- Main Funds Table (ตัด 3 เดือน / เปลี่ยนเป็น ผลตอบแทนวันนี้ และ YTD ตามสูตร) -->
+    <div class="card-subtle p-4 overflow-x-auto">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-list-ul text-gold"></i> รายการแผนลงทุนในพอร์ต
+            </h3>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -149,50 +168,51 @@
                     <th class="text-center">จัดการ</th>
                 </tr>
             </thead>
-            <tbody id="fundTableBody"></tbody>
+            <tbody id="fundTableBody" class="text-sm"></tbody>
         </table>
     </div>
 
-    <!-- Modal เพิ่ม/แก้ไข แผนลงทุน -->
-    <div id="fundModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
-        <div class="card p-6 w-full max-w-md">
+    <!-- Fund Modal -->
+    <div id="fundModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="card-gold p-6 w-full max-w-md">
             <h3 id="modalTitle" class="text-lg font-bold text-white mb-4">เพิ่ม/แก้ไขแผนลงทุน</h3>
             <input type="hidden" id="editFundId">
-            <div class="space-y-4">
+            <div class="space-y-4 text-sm">
                 <div>
                     <label class="text-xs text-gray-400">ชื่อแผนลงทุน</label>
-                    <input type="text" id="inputCode" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white mt-1">
+                    <input type="text" id="inputCode" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white mt-1 focus:border-amber-500 outline-none">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400">NAV ต้นทุน</label>
-                    <input type="number" step="0.0001" id="inputAvgNav" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white mt-1">
+                    <input type="number" step="0.0001" id="inputAvgNav" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white mt-1 focus:border-amber-500 outline-none">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400">จำนวนหน่วย</label>
-                    <input type="number" step="0.0001" id="inputUnits" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white mt-1">
+                    <input type="number" step="0.0001" id="inputUnits" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white mt-1 focus:border-amber-500 outline-none">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400">สัดส่วนเป้าหมาย (%)</label>
-                    <input type="number" step="0.1" id="inputTargetPct" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white mt-1">
+                    <input type="number" step="0.1" id="inputTargetPct" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white mt-1 focus:border-amber-500 outline-none">
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-6">
-                <button onclick="closeFundModal()" class="btn btn-dark px-4 py-2 rounded">ยกเลิก</button>
-                <button onclick="saveFund()" class="btn btn-gold px-4 py-2 rounded">บันทึก</button>
+                <button onclick="closeFundModal()" class="btn btn-dark px-4 py-2 rounded-lg text-xs">ยกเลิก</button>
+                <button onclick="saveFund()" class="btn btn-gold px-4 py-2 rounded-lg text-xs">บันทึก</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal สแกนสลิป/รูปภาพ -->
-    <div id="ocrModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
-        <div class="card p-6 w-full max-w-md text-center">
+    <!-- OCR Modal -->
+    <div id="ocrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="card-gold p-6 w-full max-w-md text-center">
             <h3 class="text-lg font-bold text-white mb-4 flex items-center justify-center gap-2"><i class="fa-solid fa-camera text-gold"></i> สแกนรูปภาพ/ใบแจ้งยอด กบข.</h3>
-            <div class="border-2 border-dashed border-gray-700 p-6 rounded-lg mb-4 hover:border-gold cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                <i class="fa-solid fa-cloud-arrow-up text-4xl text-gold mb-2"></i>
-                <p class="text-sm text-gray-300">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
-                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="alert('ระบบสแกนรูปภาพพร้อมทำงาน')">
+            <div class="border-2 border-dashed border-slate-700 p-8 rounded-xl mb-4 hover:border-amber-500 cursor-pointer bg-slate-900/50" onclick="document.getElementById('fileInput').click()">
+                <i class="fa-solid fa-cloud-arrow-up text-4xl text-gold mb-3"></i>
+                <p class="text-sm font-semibold text-white">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
+                <p class="text-xs text-gray-400 mt-1">รองรับไฟล์สลิป หรือหน้าจอแอป กบข.</p>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="alert('ระบบสแกน OCR พร้อมประมวลผล')">
             </div>
-            <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-2 rounded w-full">ปิดหน้าต่าง</button>
+            <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-2 rounded-lg text-xs w-full">ปิดหน้าต่าง</button>
         </div>
     </div>
 
@@ -230,11 +250,11 @@
                 const profit = fVal - fCost;                              // กำไร/ขาดทุนสะสม (บาท)
                 const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0; // กำไร/ขาดทุนสะสม (%)
 
-                // 1. ผลตอบแทนวันนี้ (คำนวณตามสูตรที่กำหนด)
+                // 1. ผลตอบแทนวันนี้ (คำนวณตามสูตร)
                 const prevNav = f.prevNav || f.currentNav;
                 const fValYesterday = f.units * prevNav;                 // มูลค่าพอร์ตรวมเมื่อวาน
-                const todayProfitBaht = fVal - fValYesterday;            // ผลตอบแทนวันนี้ (บาท) = มูลค่าวันนี้ - มูลค่าเมื่อวาน
-                const todayProfitPct = fVal > 0 ? (todayProfitBaht * 100) / fVal : 0; // ผลตอบแทนวันนี้ (%) = (วันนี้ - เมื่อวาน) * 100 / วันนี้
+                const todayProfitBaht = fVal - fValYesterday;            // มูลค่าพอร์ตรวมวันนี้ - มูลค่าพอร์ตรวมเมื่อวาน
+                const todayProfitPct = fVal > 0 ? (todayProfitBaht * 100) / fVal : 0; // (วันนี้ - เมื่อวาน) * 100 / วันนี้
 
                 // 2. ผลตอบแทน YTD
                 const startOfYearNav = f.ytdNav || f.avgNav;
@@ -251,29 +271,29 @@
                 tr.innerHTML = `
                     <td style="font-weight:600; color:#fff;">${f.code}</td>
                     <td class="text-right">฿${f.avgNav.toFixed(4)}</td>
-                    <td class="text-right text-gold">฿${f.currentNav.toFixed(4)}</td>
+                    <td class="text-right text-gold font-semibold">฿${f.currentNav.toFixed(4)}</td>
                     <td class="text-right">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
-                    <td class="text-right" style="font-weight:600;">฿${formatNum(fVal)}</td>
+                    <td class="text-right font-semibold text-white">฿${formatNum(fVal)}</td>
                     
                     <!-- กำไร/ขาดทุนสะสม -->
-                    <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'}">
+                    <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${profitPct.toFixed(2)}%)
                     </td>
                     
                     <!-- ผลตอบแทนวันนี้ (บาท และ %) -->
-                    <td class="text-right ${todayProfitBaht >= 0 ? 'text-green' : 'text-red'}">
+                    <td class="text-right ${todayProfitBaht >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${todayProfitBaht >= 0 ? '+' : ''}฿${formatNum(todayProfitBaht)} (${todayProfitPct >= 0 ? '+' : ''}${todayProfitPct.toFixed(2)}%)
                     </td>
                     
                     <!-- ผลตอบแทน YTD (บาท และ %) -->
-                    <td class="text-right ${ytdProfitBaht >= 0 ? 'text-green' : 'text-red'}">
+                    <td class="text-right ${ytdProfitBaht >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${ytdProfitBaht >= 0 ? '+' : ''}฿${formatNum(ytdProfitBaht)} (${ytdProfitPct >= 0 ? '+' : ''}${ytdProfitPct.toFixed(2)}%)
                     </td>
                     
-                    <!-- ปุ่มจัดการ (แก้ไข/ลบ) -->
+                    <!-- ปุ่มจัดการ (แก้ไข / ลบ) -->
                     <td class="text-center">
-                        <button onclick="openFundModal('${f.id}')" class="btn btn-dark p-2 rounded text-gold mr-1"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteFund('${f.id}')" class="btn btn-dark p-2 rounded text-red"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="openFundModal('${f.id}')" class="btn btn-dark p-1.5 rounded-md text-gold mr-1"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="deleteFund('${f.id}')" class="btn btn-dark p-1.5 rounded-md text-red"><i class="fa-solid fa-trash text-xs"></i></button>
                     </td>
                 `;
                 tableBody.appendChild(tr);
@@ -281,6 +301,7 @@
 
             // สรุปการ์ดด้านบน
             const totalProfit = totalVal - totalCost;
+            const totalProfitPct = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
             const totalDailyPct = totalVal > 0 ? (dailyProfitSum * 100) / totalVal : 0;
             const totalYtdProfitBaht = totalVal - ytdValStartSum;
             const totalYtdPct = ytdValStartSum > 0 ? (totalYtdProfitBaht / ytdValStartSum) * 100 : 0;
@@ -289,13 +310,16 @@
             
             const profitEl = document.getElementById('totalProfitDisplay');
             profitEl.innerText = `${totalProfit >= 0 ? '+' : ''}฿${formatNum(totalProfit)}`;
-            profitEl.className = `text-2xl font-bold ${totalProfit >= 0 ? 'text-green' : 'text-red'}`;
+            profitEl.className = `text-2xl font-extrabold ${totalProfit >= 0 ? 'text-green' : 'text-red'}`;
+            document.getElementById('totalProfitSub').innerText = `${totalProfitPct >= 0 ? '+' : ''}${totalProfitPct.toFixed(2)}% จากต้นทุน`;
 
             const dailyEl = document.getElementById('dailyProfitDisplay');
             dailyEl.innerText = `${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)}`;
-            dailyEl.className = `text-2xl font-bold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}`;
+            dailyEl.className = `text-2xl font-extrabold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}`;
+            document.getElementById('dailyProfitSub').innerText = `${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}% วันนี้`;
 
             document.getElementById('ytdProfitDisplay').innerText = `${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}% YTD`;
+            document.getElementById('ytdProfitSub').innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับต้นปี`;
 
             renderAllocation(totalVal);
         }
@@ -316,7 +340,7 @@
                     <td class="text-right">฿${formatNum(fVal)}</td>
                     <td class="text-right">${currentPct.toFixed(1)}%</td>
                     <td class="text-right">${targetPct.toFixed(1)}%</td>
-                    <td class="text-right ${diffPct >= 0 ? 'text-green' : 'text-red'}">${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
+                    <td class="text-right ${diffPct >= 0 ? 'text-green' : 'text-red'} font-semibold">${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
                 `;
                 allocBody.appendChild(tr);
             });
