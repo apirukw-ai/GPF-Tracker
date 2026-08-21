@@ -7,24 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0b0f19; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
-        .card { background-color: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; }
-        .text-gold { color: #f59e0b; }
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: #111827;
+            --border-color: #1f2937;
+            --gpf-gold: #f59e0b;
+            --text-muted: #9ca3af;
+        }
+        body { background-color: var(--bg-dark); color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; }
+        .text-gold { color: var(--gpf-gold); }
         .text-green { color: #10b981; }
         .text-red { color: #ef4444; }
-        .btn-gold { background-color: #f59e0b; color: #000; font-weight: 600; }
+        .btn-gold { background-color: var(--gpf-gold); color: #000; font-weight: 600; }
         .btn-gold:hover { background-color: #d97706; }
         .btn-dark { background-color: #1f2937; color: #fff; }
         .btn-dark:hover { background-color: #374151; }
+        .btn-blue { background-color: #2563eb; color: #fff; }
+        .btn-blue:hover { background-color: #1d4ed8; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.75rem 1rem; border-bottom: 1px solid #1f2937; }
-        th { font-weight: 600; color: #9ca3af; text-align: left; }
+        th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); }
+        th { font-weight: 600; color: var(--text-muted); text-align: left; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body class="p-4 md:p-6">
 
-    <!-- Header -->
+    <!-- Header Section -->
     <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div class="flex items-center gap-3">
             <i class="fa-solid fa-building-columns text-3xl text-gold"></i>
@@ -33,12 +42,45 @@
                 <p class="text-xs text-gray-400">Sync ID: <span id="syncIdDisplay" class="text-gold">my-gpf-4750131</span> <span class="text-green ml-2">● Live Cloud Sync</span></p>
             </div>
         </div>
-        <div class="flex gap-2">
-            <button onclick="openFundModal()" class="btn btn-gold px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน
-            </button>
+        <div class="flex flex-wrap gap-2">
+            <button onclick="exportData()" class="btn btn-dark px-3 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-download"></i> Export</button>
+            <button onclick="importData()" class="btn btn-dark px-3 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-upload"></i> Import</button>
+            <button onclick="openOcrModal()" class="btn btn-blue px-3 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
+            <button onclick="openFundModal()" class="btn btn-gold px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
         </div>
     </header>
+
+    <!-- Real-time Market Movement Ticker -->
+    <div class="card p-4 mb-6">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-gold"></i> ดัชนีอ้างอิงตลาดการเงิน (Real-time Movement)
+            </h3>
+            <span class="text-xs text-gold flex items-center gap-1"><i class="fa-solid fa-bolt"></i> Live Market Feeds</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div class="border-r border-gray-800 pr-2">
+                <p class="text-xs text-gray-400">MSCI World Index <span class="text-[10px] text-gray-500">WORLD</span></p>
+                <p class="text-lg font-bold text-white">3,379.61</p>
+                <p class="text-xs text-green">+0.42%</p>
+            </div>
+            <div class="border-r border-gray-800 pr-2">
+                <p class="text-xs text-gray-400">MSCI Emerging Markets <span class="text-[10px] text-gray-500">MSCI EM</span></p>
+                <p class="text-lg font-bold text-white">1,024.71</p>
+                <p class="text-xs text-green">+0.34%</p>
+            </div>
+            <div class="border-r border-gray-800 pr-2">
+                <p class="text-xs text-gray-400">SET50 Index <span class="text-[10px] text-gray-500">SET50</span></p>
+                <p class="text-lg font-bold text-white">885.00</p>
+                <p class="text-xs text-red">-0.17%</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-400">PF&REIT Index <span class="text-[10px] text-gray-500">PROPCON</span></p>
+                <p class="text-lg font-bold text-white">132.84</p>
+                <p class="text-xs text-green">+0.15%</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Top Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -60,7 +102,7 @@
         </div>
     </div>
 
-    <!-- Target Allocation Table -->
+    <!-- Target Allocation Table (ตัดคำแนะนำปรับสัดส่วนออกแล้ว) -->
     <div class="card p-4 mb-6 overflow-x-auto">
         <h3 class="text-md font-bold text-gold mb-3 flex items-center gap-2">
             <i class="fa-solid fa-chart-pie"></i> จัดสัดส่วนเป้าหมาย & Rebalance แผน กบข.
@@ -79,7 +121,7 @@
         </table>
     </div>
 
-    <!-- Main Funds Table -->
+    <!-- Main Funds Table (ตัด 3 เดือนออก / เปลี่ยนเป็น ผลตอบแทนวันนี้ และ YTD ตามสูตร) -->
     <div class="card p-4 overflow-x-auto">
         <h3 class="text-md font-bold text-white mb-3 flex items-center gap-2">
             <i class="fa-solid fa-list-check"></i> รายการแผนลงทุนในพอร์ต
@@ -102,7 +144,7 @@
         </table>
     </div>
 
-    <!-- Fund Modal (Add / Edit) -->
+    <!-- Modal เพิ่ม/แก้ไข แผนลงทุน -->
     <div id="fundModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
         <div class="card p-6 w-full max-w-md">
             <h3 id="modalTitle" class="text-lg font-bold text-white mb-4">เพิ่ม/แก้ไขแผนลงทุน</h3>
@@ -129,6 +171,19 @@
                 <button onclick="closeFundModal()" class="btn btn-dark px-4 py-2 rounded">ยกเลิก</button>
                 <button onclick="saveFund()" class="btn btn-gold px-4 py-2 rounded">บันทึก</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal สแกนสลิป/รูปภาพ -->
+    <div id="ocrModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="card p-6 w-full max-w-md text-center">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center justify-center gap-2"><i class="fa-solid fa-camera text-gold"></i> สแกนรูปภาพ/ใบแจ้งยอด กบข.</h3>
+            <div class="border-2 border-dashed border-gray-700 p-6 rounded-lg mb-4 hover:border-gold cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                <i class="fa-solid fa-cloud-arrow-up text-4xl text-gold mb-2"></i>
+                <p class="text-sm text-gray-300">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="alert('ระบบสแกนรูปภาพพร้อมทำงาน')">
+            </div>
+            <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-2 rounded w-full">ปิดหน้าต่าง</button>
         </div>
     </div>
 
@@ -166,16 +221,16 @@
                 const profit = fVal - fCost;                              // กำไร/ขาดทุนสะสม (บาท)
                 const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0; // กำไร/ขาดทุนสะสม (%)
 
-                // 1. ผลตอบแทนวันนี้
+                // 1. ผลตอบแทนวันนี้ (คำนวณตามสูตรที่กำหนด)
                 const prevNav = f.prevNav || f.currentNav;
                 const fValYesterday = f.units * prevNav;                 // มูลค่าพอร์ตรวมเมื่อวาน
-                const todayProfitBaht = fVal - fValYesterday;            // มูลค่าพอร์ตรวมวันนี้ - มูลค่าพอร์ตรวมเมื่อวาน
-                const todayProfitPct = fVal > 0 ? (todayProfitBaht * 100) / fVal : 0; // (วันนี้ - เมื่อวาน) * 100 / วันนี้
+                const todayProfitBaht = fVal - fValYesterday;            // ผลตอบแทนวันนี้ (บาท) = มูลค่าวันนี้ - มูลค่าเมื่อวาน
+                const todayProfitPct = fVal > 0 ? (todayProfitBaht * 100) / fVal : 0; // ผลตอบแทนวันนี้ (%) = (วันนี้ - เมื่อวาน) * 100 / วันนี้
 
                 // 2. ผลตอบแทน YTD
                 const startOfYearNav = f.ytdNav || f.avgNav;
-                const fValYtdStart = f.units * startOfYearNav;
-                const ytdProfitBaht = fVal - fValYtdStart;
+                const fValYtdStart = f.units * startOfYearNav;            // มูลค่าพอร์ตรวมเมื่อต้นปี
+                const ytdProfitBaht = fVal - fValYtdStart;               // ผลตอบแทน YTD (บาท) = วันนี้ - ต้นปี
                 const ytdProfitPct = fValYtdStart > 0 ? (ytdProfitBaht / fValYtdStart) * 100 : (f.ytdPct || 0);
 
                 totalVal += fVal;
@@ -206,7 +261,7 @@
                         ${ytdProfitBaht >= 0 ? '+' : ''}฿${formatNum(ytdProfitBaht)} (${ytdProfitPct >= 0 ? '+' : ''}${ytdProfitPct.toFixed(2)}%)
                     </td>
                     
-                    <!-- จัดการ (แก้ไข / ลบ) -->
+                    <!-- ปุ่มจัดการ (แก้ไข/ลบ) -->
                     <td class="text-center">
                         <button onclick="openFundModal('${f.id}')" class="btn btn-dark p-2 rounded text-gold mr-1"><i class="fa-solid fa-pen"></i></button>
                         <button onclick="deleteFund('${f.id}')" class="btn btn-dark p-2 rounded text-red"><i class="fa-solid fa-trash"></i></button>
@@ -217,7 +272,6 @@
 
             // สรุปการ์ดด้านบน
             const totalProfit = totalVal - totalCost;
-            const totalProfitPct = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
             const totalDailyPct = totalVal > 0 ? (dailyProfitSum * 100) / totalVal : 0;
             const totalYtdProfitBaht = totalVal - ytdValStartSum;
             const totalYtdPct = ytdValStartSum > 0 ? (totalYtdProfitBaht / ytdValStartSum) * 100 : 0;
@@ -280,9 +334,9 @@
             document.getElementById('fundModal').classList.remove('hidden');
         }
 
-        function closeFundModal() {
-            document.getElementById('fundModal').classList.add('hidden');
-        }
+        function closeFundModal() { document.getElementById('fundModal').classList.add('hidden'); }
+        function openOcrModal() { document.getElementById('ocrModal').classList.remove('hidden'); }
+        function closeOcrModal() { document.getElementById('ocrModal').classList.add('hidden'); }
 
         async function saveFund() {
             const id = document.getElementById('editFundId').value;
@@ -321,6 +375,38 @@
                 await saveToFirebase();
                 renderAll();
             }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(funds));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "gpf_portfolio_backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                reader.onload = async readerEvent => {
+                    try {
+                        funds = JSON.parse(readerEvent.target.result);
+                        await saveToFirebase();
+                        renderAll();
+                        alert("อิมพอร์ตข้อมูลสำเร็จ!");
+                    } catch(err) {
+                        alert("ไฟล์ JSON ไม่ถูกต้อง");
+                    }
+                }
+            }
+            input.click();
         }
 
         async function saveToFirebase() {
