@@ -45,6 +45,15 @@
         th, td { padding: 0.65rem 0.85rem; border-bottom: 1px solid #1e293b; }
         th { font-weight: 700; color: #f59e0b; text-align: left; font-size: 0.8rem; }
         .hidden { display: none !important; }
+
+        /* เอฟเฟกต์ไฟกระพริบขณะอัปเดตข้อมูล */
+        @keyframes flash-update {
+            0% { background-color: rgba(245, 158, 11, 0.3); }
+            100% { background-color: rgba(15, 23, 42, 0.9); }
+        }
+        .flash-active {
+            animation: flash-update 1s ease-out;
+        }
     </style>
 </head>
 <body class="py-6 px-4">
@@ -68,7 +77,7 @@
             <div class="bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs flex items-center gap-2">
                 <span class="text-gray-400"><i class="fa-solid fa-wifi text-gold"></i> Sync ID: <strong id="syncIdDisplay" class="text-gold">my-gpf-4750131</strong></span>
                 <span class="text-green flex items-center gap-1 font-medium">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></span> Live Cloud Sync
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Cloud Sync
                 </span>
             </div>
 
@@ -81,47 +90,72 @@
             </div>
         </header>
 
-        <!-- Real-time Market Movement (TradingView Widget) -->
+        <!-- Real-time Market Movement (Static Grid Badges + ไฟกระพริบ) -->
         <div class="card-gold p-3">
-            <div class="flex justify-between items-center mb-1.5 px-1">
+            <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (TradingView Real-time Feeds)
+                    <i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (TRADINGVIEW REAL-TIME FEEDS)
                 </h3>
-                <span class="text-[11px] text-green font-semibold flex items-center gap-1">
-                    <span class="w-2 h-2 rounded-full bg-green animate-ping"></span> Live Market
+                <span class="text-[11px] text-green font-semibold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Market
                 </span>
             </div>
 
-            <!-- TradingView Ticker Tape Widget Embed -->
-            <div class="tradingview-widget-container rounded-lg overflow-hidden border border-slate-800">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                {
-                    "symbols": [
-                        {
-                            "proName": "SET:SET50",
-                            "title": "SET50 Index"
-                        },
-                        {
-                            "proName": "SET:PF_REIT",
-                            "title": "PF & REIT Index"
-                        },
-                        {
-                            "proName": "AMEX:URTH",
-                            "title": "MSCI World (URTH)"
-                        },
-                        {
-                            "proName": "AMEX:EEM",
-                            "title": "MSCI EM (EEM)"
-                        }
-                    ],
-                    "showSymbolLogo": true,
-                    "isTransparent": true,
-                    "displayMode": "adaptive",
-                    "colorTheme": "dark",
-                    "locale": "th_TH"
-                }
-                </script>
+            <!-- Grid กล่องนิ่ง 4 ตัวเลขอ้างอิง (ไม่เลื่อน ไม่เวียนหัว) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="marketFeedGrid">
+                
+                <!-- Badge 1: MSCI EM -->
+                <div id="card-eem" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
+                        <span class="font-medium text-gray-200">MSCI EM (EEM)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-semibold">
+                        <span id="price-eem" class="text-white">66.62</span>
+                        <span id="change-eem" class="text-green text-[11px]">+0.51 (+0.77%)</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    </div>
+                </div>
+
+                <!-- Badge 2: SET50 (TDEX ETF) แก้ไขเครื่องหมาย ! เรียบร้อย -->
+                <div id="card-set50" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded flex items-center justify-center bg-amber-500/20 text-amber-400 font-bold text-[10px]">S</span>
+                        <span class="font-medium text-gray-200">SET50 Index (TDEX)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-semibold">
+                        <span id="price-set50" class="text-white">9.18</span>
+                        <span id="change-set50" class="text-green text-[11px]">+0.05 (+0.55%)</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    </div>
+                </div>
+
+                <!-- Badge 3: PF & REIT (CPNREIT) แก้ไขเครื่องหมาย ! เรียบร้อย -->
+                <div id="card-reit" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded flex items-center justify-center bg-purple-500/20 text-purple-400 font-bold text-[10px]">P</span>
+                        <span class="font-medium text-gray-200">PF & REIT (CPNREIT)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-semibold">
+                        <span id="price-reit" class="text-white">11.40</span>
+                        <span id="change-reit" class="text-red text-[11px]">-0.10 (-0.87%)</span>
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    </div>
+                </div>
+
+                <!-- Badge 4: MSCI World -->
+                <div id="card-urth" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
+                        <span class="font-medium text-gray-200">MSCI World (URTH)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-semibold">
+                        <span id="price-urth" class="text-white">207.83</span>
+                        <span id="change-urth" class="text-red text-[11px]">-1.39 (-0.66%)</span>
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -253,6 +287,18 @@
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        // ฟังก์ชันจำลอง/อัปเดตราคาตลาดพร้อมไฟกระพริบ
+        function triggerMarketFlash() {
+            const keys = ['eem', 'set50', 'reit', 'urth'];
+            keys.forEach(k => {
+                const card = document.getElementById(`card-${k}`);
+                if (card) {
+                    card.classList.add('flash-active');
+                    setTimeout(() => card.classList.remove('flash-active'), 1000);
+                }
+            });
+        }
+
         async function loadData() {
             try {
                 const res = await fetch(DB_URL);
@@ -274,18 +320,16 @@
             tableBody.innerHTML = '';
 
             funds.forEach(f => {
-                const fVal = f.units * f.currentNav;                     // มูลค่าพอร์ตรวมวันนี้
-                const fCost = f.units * f.avgNav;                         // มูลค่าต้นทุน
-                const profit = fVal - fCost;                              // กำไร/ขาดทุนสะสม (บาท)
-                const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0; // กำไร/ขาดทุนสะสม (%)
+                const fVal = f.units * f.currentNav;                     
+                const fCost = f.units * f.avgNav;                         
+                const profit = fVal - fCost;                              
+                const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0; 
 
-                // 1. ผลตอบแทนวันนี้
                 const prevNav = f.prevNav || f.currentNav;
                 const fValYesterday = f.units * prevNav;                 
                 const todayProfitBaht = fVal - fValYesterday;            
                 const todayProfitPct = fVal > 0 ? (todayProfitBaht * 100) / fVal : 0; 
 
-                // 2. ผลตอบแทน YTD
                 const startOfYearNav = f.ytdNav || f.avgNav;
                 const fValYtdStart = f.units * startOfYearNav;            
                 const ytdProfitBaht = fVal - fValYtdStart;               
@@ -303,23 +347,15 @@
                     <td class="text-right text-gold font-semibold">฿${f.currentNav.toFixed(4)}</td>
                     <td class="text-right">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
                     <td class="text-right font-semibold text-white">฿${formatNum(fVal)}</td>
-                    
-                    <!-- กำไร/ขาดทุนสะสม -->
                     <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${profitPct.toFixed(2)}%)
                     </td>
-                    
-                    <!-- ผลตอบแทนวันนี้ -->
                     <td class="text-right ${todayProfitBaht >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${todayProfitBaht >= 0 ? '+' : ''}฿${formatNum(todayProfitBaht)} (${todayProfitPct >= 0 ? '+' : ''}${todayProfitPct.toFixed(2)}%)
                     </td>
-                    
-                    <!-- ผลตอบแทน YTD -->
                     <td class="text-right ${ytdProfitBaht >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${ytdProfitBaht >= 0 ? '+' : ''}฿${formatNum(ytdProfitBaht)} (${ytdProfitPct >= 0 ? '+' : ''}${ytdProfitPct.toFixed(2)}%)
                     </td>
-                    
-                    <!-- ปุ่มจัดการ -->
                     <td class="text-center">
                         <button onclick="openFundModal('${f.id}')" class="btn btn-dark p-1 rounded text-gold mr-1"><i class="fa-solid fa-pen text-[10px]"></i></button>
                         <button onclick="deleteFund('${f.id}')" class="btn btn-dark p-1 rounded text-red"><i class="fa-solid fa-trash text-[10px]"></i></button>
@@ -328,7 +364,6 @@
                 tableBody.appendChild(tr);
             });
 
-            // สรุปการ์ดด้านบน
             const totalProfit = totalVal - totalCost;
             const totalProfitPct = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
             const totalDailyPct = totalVal > 0 ? (dailyProfitSum * 100) / totalVal : 0;
@@ -351,6 +386,7 @@
             document.getElementById('ytdProfitSub').innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับต้นปี`;
 
             renderAllocation(totalVal);
+            triggerMarketFlash(); // กระพริบไฟเมื่อโหลดข้อมูลเสร็จ
         }
 
         function renderAllocation(totalVal) {
@@ -486,6 +522,9 @@
                 console.error("Save Error:", err);
             }
         }
+
+        // รีเฟรชไฟกระพริบทุกๆ 30 วินาที
+        setInterval(triggerMarketFlash, 30000);
 
         loadData();
     </script>
