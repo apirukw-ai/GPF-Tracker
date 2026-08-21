@@ -45,21 +45,6 @@
         th, td { padding: 0.65rem 0.85rem; border-bottom: 1px solid #1e293b; }
         th { font-weight: 700; color: #f59e0b; text-align: left; font-size: 0.8rem; }
         .hidden { display: none !important; }
-
-        /* Animation & Flashing classes สำหรับ Real-time Market */
-        .market-box {
-            transition: background-color 0.6s ease, border-color 0.6s ease;
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-        }
-        .flash-up {
-            background-color: rgba(16, 185, 129, 0.25) !important;
-            border: 1px solid rgba(16, 185, 129, 0.6);
-        }
-        .flash-down {
-            background-color: rgba(239, 68, 68, 0.25) !important;
-            border: 1px solid rgba(239, 68, 68, 0.6);
-        }
     </style>
 </head>
 <body class="py-6 px-4">
@@ -96,37 +81,47 @@
             </div>
         </header>
 
-        <!-- Real-time Market Movement Ticker (พร้อมระบบไฟกระพริบเรียลไทม์) -->
-        <div class="card-gold p-3.5">
-            <div class="flex justify-between items-center mb-2">
+        <!-- Real-time Market Movement (TradingView Widget) -->
+        <div class="card-gold p-3">
+            <div class="flex justify-between items-center mb-1.5 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (Real-time Movement)
+                    <i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (TradingView Real-time Feeds)
                 </h3>
-                <span class="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
-                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span> Live Feeds
+                <span class="text-[11px] text-green font-semibold flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-green animate-ping"></span> Live Market
                 </span>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                <div id="mkt-box-world" class="market-box border-r border-slate-800/80 pr-2">
-                    <p class="text-[11px] text-gray-400 font-medium">MSCI World Index <span class="text-[10px] text-gray-500 float-right">WORLD</span></p>
-                    <p id="mkt-val-world" class="text-base font-bold text-white mt-0.5">3,377.22</p>
-                    <p id="mkt-chg-world" class="text-xs text-green font-semibold">+0.35%</p>
-                </div>
-                <div id="mkt-box-em" class="market-box border-r border-slate-800/80 pr-2">
-                    <p class="text-[11px] text-gray-400 font-medium">MSCI Emerging Markets <span class="text-[10px] text-gray-500 float-right">MSCI EM</span></p>
-                    <p id="mkt-val-em" class="text-base font-bold text-white mt-0.5">1,023.49</p>
-                    <p id="mkt-chg-em" class="text-xs text-green font-semibold">+0.22%</p>
-                </div>
-                <div id="mkt-box-set50" class="market-box border-r border-slate-800/80 pr-2">
-                    <p class="text-[11px] text-gray-400 font-medium">SET50 Index <span class="text-[10px] text-gray-500 float-right">SET50</span></p>
-                    <p id="mkt-val-set50" class="text-base font-bold text-white mt-0.5">885.80</p>
-                    <p id="mkt-chg-set50" class="text-xs text-red font-semibold">-0.08%</p>
-                </div>
-                <div id="mkt-box-reit" class="market-box">
-                    <p class="text-[11px] text-gray-400 font-medium">PF&REIT Index <span class="text-[10px] text-gray-500 float-right">PROPCON</span></p>
-                    <p id="mkt-val-reit" class="text-base font-bold text-white mt-0.5">133.12</p>
-                    <p id="mkt-chg-reit" class="text-xs text-green font-semibold">+0.34%</p>
-                </div>
+
+            <!-- TradingView Ticker Tape Widget Embed -->
+            <div class="tradingview-widget-container rounded-lg overflow-hidden border border-slate-800">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                {
+                    "symbols": [
+                        {
+                            "proName": "SET:SET50",
+                            "title": "SET50 Index"
+                        },
+                        {
+                            "proName": "SET:PF_REIT",
+                            "title": "PF & REIT Index"
+                        },
+                        {
+                            "proName": "AMEX:URTH",
+                            "title": "MSCI World (URTH)"
+                        },
+                        {
+                            "proName": "AMEX:EEM",
+                            "title": "MSCI EM (EEM)"
+                        }
+                    ],
+                    "showSymbolLogo": true,
+                    "isTransparent": true,
+                    "displayMode": "adaptive",
+                    "colorTheme": "dark",
+                    "locale": "th_TH"
+                }
+                </script>
             </div>
         </div>
 
@@ -200,7 +195,7 @@
 
     </div>
 
-    <!-- Fund Modal (เพิ่มช่องใส่ NAV ปัจจุบัน แล้ว) -->
+    <!-- Fund Modal -->
     <div id="fundModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
         <div class="card-gold p-5 w-full max-w-md">
             <h3 id="modalTitle" class="text-base font-bold text-white mb-3">เพิ่ม/แก้ไขแผนลงทุน</h3>
@@ -253,14 +248,6 @@
     <script>
         const DB_URL = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json";
         let funds = [];
-
-        // ข้อมูลตั้งต้น ดัชนีการเงิน
-        const marketData = {
-            world: { val: 3377.22, pct: 0.35 },
-            em: { val: 1023.49, pct: 0.22 },
-            set50: { val: 885.80, pct: -0.08 },
-            reit: { val: 133.12, pct: 0.34 }
-        };
 
         function formatNum(num) {
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -394,10 +381,10 @@
                 const f = funds.find(item => item.id === id);
                 if (f) {
                     document.getElementById('modalTitle').innerText = "แก้ไขแผนลงทุน";
-                    document.getElementById('inputCode').value = f.code;
-                    document.getElementById('inputAvgNav').value = f.avgNav;
-                    document.getElementById('inputCurrentNav').value = f.currentNav;
-                    document.getElementById('inputUnits').value = f.units;
+                    document.getElementById('inputCode').value = f.code || '';
+                    document.getElementById('inputAvgNav').value = f.avgNav || '';
+                    document.getElementById('inputCurrentNav').value = f.currentNav || '';
+                    document.getElementById('inputUnits').value = f.units || '';
                     document.getElementById('inputTargetPct').value = f.targetPct || 0;
                 }
             } else {
@@ -500,43 +487,7 @@
             }
         }
 
-        // ระบบสุ่มขยับดัชนีการเงินแบบ Real-time Flashing Effect
-        function initRealtimeTicker() {
-            const keys = ['world', 'em', 'set50', 'reit'];
-            setInterval(() => {
-                // สุ่มเลือก 1 ดัชนีที่จะขยับ
-                const key = keys[Math.floor(Math.random() * keys.length)];
-                const item = marketData[key];
-                
-                // สุ่มการเปลี่ยนแปลงราคาแบบเล็กน้อย
-                const isUp = Math.random() > 0.45;
-                const changeDelta = (Math.random() * 0.8 + 0.1) * (isUp ? 1 : -1);
-                
-                item.val = +(item.val + changeDelta).toFixed(2);
-                item.pct = +(item.pct + (changeDelta / 100)).toFixed(2);
-
-                const boxEl = document.getElementById(`mkt-box-${key}`);
-                const valEl = document.getElementById(`mkt-val-${key}`);
-                const chgEl = document.getElementById(`mkt-chg-${key}`);
-
-                if (boxEl && valEl && chgEl) {
-                    valEl.innerText = item.val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    chgEl.innerText = `${item.pct >= 0 ? '+' : ''}${item.pct.toFixed(2)}%`;
-                    chgEl.className = `text-xs font-semibold ${item.pct >= 0 ? 'text-green' : 'text-red'}`;
-
-                    // ใส่เอฟเฟกต์ไฟกระพริบ
-                    const flashClass = isUp ? 'flash-up' : 'flash-down';
-                    boxEl.classList.add(flashClass);
-                    
-                    setTimeout(() => {
-                        boxEl.classList.remove(flashClass);
-                    }, 800);
-                }
-            }, 3000); // ขยับกระพริบทุกๆ 3 วินาที
-        }
-
         loadData();
-        initRealtimeTicker();
     </script>
 </body>
 </html>
