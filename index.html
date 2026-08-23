@@ -73,7 +73,7 @@
 
     <div class="max-w-7xl mx-auto space-y-4">
 
-        <!-- Header Section (คลีน โปร่งสบายขึ้น) -->
+        <!-- Header Section -->
         <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#111726] p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
@@ -93,10 +93,10 @@
                 </span>
             </div>
 
-            <!-- Action Buttons Right -->
+            <!-- Action Buttons Right (ปรับปรุงไอคอน Export/Import เรียบร้อยแล้ว) -->
             <div class="flex flex-wrap gap-2">
-                <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-download"></i> Export</button>
-                <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-upload"></i> Import</button>
+                <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> Export</button>
+                <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import</button>
                 <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
                 <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
             </div>
@@ -167,17 +167,17 @@
         <!-- Top Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">มูลค่าพอร์ตรวม กบข.</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">มูลค่าพอร์ต</p>
                 <h2 id="totalValDisplay" class="text-xl font-extrabold text-white">฿0.00</h2>
                 <p class="text-[10px] text-gray-500 mt-1">อัปเดตอัตโนมัติทุกวันทำการ</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนสะสมรวม</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนสะสม</p>
                 <h2 id="totalProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
                 <p id="totalProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% จากต้นทุน</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนรวมวันนี้</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนวันนี้</p>
                 <h2 id="dailyProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
                 <p id="dailyProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% วันนี้</p>
             </div>
@@ -228,7 +228,7 @@
         <!-- Target Allocation Table -->
         <div class="card-subtle p-3.5 overflow-x-auto">
             <h3 class="text-xs font-bold text-gold mb-2.5 flex items-center gap-2 uppercase tracking-wider">
-                <i class="fa-solid fa-sliders"></i> จัดสัดส่วนเป้าหมาย & Rebalance แผน กบข.
+                <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย
             </h3>
             <table>
                 <thead>
@@ -251,7 +251,7 @@
                     <i class="fa-solid fa-list-ul text-gold"></i> รายการแผนลงทุนในพอร์ต
                 </h3>
 
-                <!-- Last Updated Timestamp Badge ย้ายมาอยู่มุมขวาบนตรงนี้ -->
+                <!-- Last Updated Timestamp Badge -->
                 <div class="bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2 shadow-sm w-fit">
                     <i class="fa-regular fa-clock text-amber-400"></i>
                     <span class="text-gray-300 font-medium">อัปเดต NAV ล่าสุด:</span>
@@ -268,8 +268,8 @@
                         <th class="text-right">NAV ปัจจุบัน</th>
                         <th class="text-right">จำนวนหน่วย</th>
                         <th class="text-right">มูลค่าปัจจุบัน</th>
-                        <th class="text-right">กำไร/ขาดทุนสะสมรวม</th>
-                        <th class="text-right">กำไร/ขาดทุนรวมวันนี้</th>
+                        <th class="text-right">กำไร/ขาดทุนสะสม</th>
+                        <th class="text-right">กำไร/ขาดทุนวันนี้</th>
                         <th class="text-right">ผลงานตั้งแต่ต้นปี (YTD)</th>
                         <th class="text-center">จัดการ</th>
                     </tr>
