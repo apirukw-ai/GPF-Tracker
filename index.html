@@ -205,7 +205,7 @@
             <div class="card-subtle p-4 overflow-x-auto flex flex-col justify-between">
                 <div>
                     <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
-                        <i class="fa-solid fa-clock-rotate-left"></i> ประวัติบันทึกมูลค่าพอร์ตรวม (Portfolio History Log)
+                        <i class="fa-solid fa-clock-rotate-left"></i> ประวัติบันทึกมูลค่าพอร์ตรวม (PORTFOLIO HISTORY LOG)
                     </h3>
                     <table>
                         <thead>
@@ -228,7 +228,7 @@
         <!-- Target Allocation Table -->
         <div class="card-subtle p-3.5 overflow-x-auto">
             <h3 class="text-xs font-bold text-gold mb-2.5 flex items-center gap-2 uppercase tracking-wider">
-                <i class="fa-solid fa-sliders"></i> จัดสัดส่วนเป้าหมาย & Rebalance แผน กบข.
+                <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย
             </h3>
             <table>
                 <thead>
@@ -512,7 +512,6 @@
             const backgroundColors = dataPct.map(val => val >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(239, 68, 68, 0.75)');
             const borderColors = dataPct.map(val => val >= 0 ? '#10b981' : '#ef4444');
 
-            // คำนวณค่าสูงสุดเพื่อเผื่อพื้นที่ Headroom ด้านบนแกน Y ไม่ให้ Label โดนตัด
             const maxVal = Math.max(...dataPct, 0);
             const yMax = maxVal > 0 ? maxVal * 1.25 : undefined;
 
@@ -535,7 +534,7 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            top: 25 // ระยะเว้นขอบบนป้องกันข้อความโดนตัด
+                            top: 25
                         }
                     },
                     plugins: {
