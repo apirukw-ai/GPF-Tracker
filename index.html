@@ -4,15 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPF Portfolio Tracker - ระบบบันทึกพอร์ต กบข.</title>
-<!-- PWA Settings -->
+    
+    <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GPF Tracker">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2953/2953361.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js & Datalabels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
     <style>
         :root {
             --bg-dark: #090d16;
@@ -66,7 +73,7 @@
 
     <div class="max-w-7xl mx-auto space-y-4">
 
-        <!-- Header Section -->
+        <!-- Header Section (คลีน โปร่งสบายขึ้น) -->
         <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#111726] p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
@@ -79,8 +86,8 @@
             </div>
 
             <!-- Sync Status Center -->
-            <div class="bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs flex items-center gap-2">
-                <span class="text-gray-400"><i class="fa-solid fa-wifi text-gold"></i> Sync ID: <strong id="syncIdDisplay" class="text-gold">my-gpf-4750131</strong></span>
+            <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 text-xs flex items-center gap-2">
+                <span class="text-gray-400"><i class="fa-solid fa-wifi text-gold"></i> ID: <strong id="syncIdDisplay" class="text-gold">my-gpf-4750131</strong></span>
                 <span class="text-green flex items-center gap-1 font-medium">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Cloud Sync
                 </span>
@@ -107,7 +114,6 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="marketFeedGrid">
-                
                 <div id="card-urth" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-2">
                         <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
@@ -155,7 +161,6 @@
                         <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -172,15 +177,52 @@
                 <p id="totalProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% จากต้นทุน</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">ผลตอบแทนวันนี้</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนรวมวันนี้</p>
                 <h2 id="dailyProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
                 <p id="dailyProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% วันนี้</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">ผลตอบแทน YTD รวม</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนตั้งแต่ต้นปี (YTD)</p>
                 <h2 id="ytdProfitDisplay" class="text-xl font-extrabold text-gold">0.00% YTD</h2>
                 <p id="ytdProfitSub" class="text-[10px] text-gray-400 mt-1">เทียบกับ 1 ม.ค. 69 (฿1,340,202.52)</p>
             </div>
+        </div>
+
+        <!-- 2-Column Grid: Bar Chart & History Log Side-by-Side -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            
+            <!-- Left: Bar Chart Performance -->
+            <div class="card-subtle p-4 flex flex-col justify-between">
+                <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-chart-column"></i> เปรียบเทียบกำไร/ขาดทุนสะสมแต่ละแผนลงทุน (%)
+                </h3>
+                <div class="relative w-full h-56">
+                    <canvas id="profitBarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Right: Portfolio History Log Table -->
+            <div class="card-subtle p-4 overflow-x-auto flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                        <i class="fa-solid fa-clock-rotate-left"></i> ประวัติบันทึกมูลค่าพอร์ตรวม (Portfolio History Log)
+                    </h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>วัน-เวลา บันทึก</th>
+                                <th class="text-right">มูลค่าพอร์ตรวม</th>
+                                <th class="text-right">เปลี่ยนแปลงรายวัน</th>
+                                <th class="text-right">กำไร/ขาดทุนสะสม</th>
+                                <th class="text-center">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="text-xs"></tbody>
+                    </table>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-2 text-right">* บันทึกอัตโนมัติเมื่อระบบดึงค่า NAV ประจำวัน</p>
+            </div>
+
         </div>
 
         <!-- Target Allocation Table -->
@@ -204,11 +246,20 @@
 
         <!-- Main Funds Table -->
         <div class="card-subtle p-3.5 overflow-x-auto">
-            <div class="flex justify-between items-center mb-2.5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <h3 class="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider">
                     <i class="fa-solid fa-list-ul text-gold"></i> รายการแผนลงทุนในพอร์ต
                 </h3>
+
+                <!-- Last Updated Timestamp Badge ย้ายมาอยู่มุมขวาบนตรงนี้ -->
+                <div class="bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2 shadow-sm w-fit">
+                    <i class="fa-regular fa-clock text-amber-400"></i>
+                    <span class="text-gray-300 font-medium">อัปเดต NAV ล่าสุด:</span>
+                    <strong id="lastUpdatedBadge" class="text-amber-300 font-bold tracking-wide">-</strong>
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                </div>
             </div>
+
             <table>
                 <thead>
                     <tr>
@@ -217,13 +268,14 @@
                         <th class="text-right">NAV ปัจจุบัน</th>
                         <th class="text-right">จำนวนหน่วย</th>
                         <th class="text-right">มูลค่าปัจจุบัน</th>
-                        <th class="text-right">กำไร/ขาดทุนสะสม</th>
-                        <th class="text-right">ผลตอบแทนวันนี้</th>
-                        <th class="text-right">ผลตอบแทน YTD</th>
+                        <th class="text-right">กำไร/ขาดทุนสะสมรวม</th>
+                        <th class="text-right">กำไร/ขาดทุนรวมวันนี้</th>
+                        <th class="text-right">ผลงานตั้งแต่ต้นปี (YTD)</th>
                         <th class="text-center">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="fundTableBody" class="text-xs"></tbody>
+                <tfoot id="fundTableFoot" class="text-xs font-bold bg-slate-900/90 border-t-2 border-amber-500/40"></tfoot>
             </table>
         </div>
 
@@ -283,12 +335,13 @@
         const DB_URL = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json";
         const YTD_BASE_VAL = 1340202.52;
         let funds = [];
+        let historyLogs = [];
+        let chartInstance = null;
 
         function formatNum(num) {
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        // ฟังก์ชันกำหนดสีป้ายชื่อแผนตามประเภทสินทรัพย์
         function getPlanBadge(code) {
             if (!code) return '';
             if (code.includes('ตราสารหนี้') || code.includes('ตลาดเงิน')) {
@@ -317,7 +370,19 @@
             try {
                 const res = await fetch(DB_URL);
                 const data = await res.json();
-                funds = data || [];
+                
+                if (Array.isArray(data)) {
+                    funds = data;
+                } else if (data && typeof data === 'object') {
+                    funds = data.funds || data.items || [];
+                    historyLogs = data.history || [];
+                    if (data.lastUpdated) {
+                        document.getElementById('lastUpdatedBadge').innerText = data.lastUpdated;
+                    }
+                } else {
+                    funds = [];
+                }
+                
                 renderAll();
             } catch (err) {
                 console.error("Load Data Error:", err);
@@ -332,6 +397,9 @@
 
             const tableBody = document.getElementById('fundTableBody');
             tableBody.innerHTML = '';
+
+            const fundLabels = [];
+            const fundProfitPcts = [];
 
             funds.forEach(f => {
                 const fVal = f.units * f.currentNav;                     
@@ -353,6 +421,9 @@
                 totalCost += fCost;
                 dailyProfitSum += todayProfitBaht;
                 ytdValStartSum += fValYtdStart;
+
+                fundLabels.push(f.code);
+                fundProfitPcts.push(parseFloat(profitPct.toFixed(2)));
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -386,6 +457,25 @@
             const totalYtdProfitBaht = totalVal - baseStartVal;
             const totalYtdPct = baseStartVal > 0 ? (totalYtdProfitBaht / baseStartVal) * 100 : 0;
 
+            // Render TFOOT Total Summary Row
+            const tableFoot = document.getElementById('fundTableFoot');
+            tableFoot.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-left font-bold text-amber-400">ผลรวมทั้งพอร์ต (Total Summary)</td>
+                    <td class="text-right font-bold text-white">฿${formatNum(totalVal)}</td>
+                    <td class="text-right font-bold ${totalProfit >= 0 ? 'text-green' : 'text-red'}">
+                        ${totalProfit >= 0 ? '+' : ''}฿${formatNum(totalProfit)} (${totalProfitPct.toFixed(2)}%)
+                    </td>
+                    <td class="text-right font-bold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}">
+                        ${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)} (${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}%)
+                    </td>
+                    <td class="text-right font-bold ${totalYtdProfitBaht >= 0 ? 'text-green' : 'text-red'}">
+                        ${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} (${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}%)
+                    </td>
+                    <td></td>
+                </tr>
+            `;
+
             document.getElementById('totalValDisplay').innerText = `฿${formatNum(totalVal)}`;
             
             const profitEl = document.getElementById('totalProfitDisplay');
@@ -401,8 +491,93 @@
             document.getElementById('ytdProfitDisplay').innerText = `${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}% YTD`;
             document.getElementById('ytdProfitSub').innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับ 1 ม.ค. 69`;
 
+            if (document.getElementById('lastUpdatedBadge').innerText === '-') {
+                const now = new Date();
+                document.getElementById('lastUpdatedBadge').innerText = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
+            }
+
             renderAllocation(totalVal);
+            renderProfitBarChart(fundLabels, fundProfitPcts);
+            renderHistoryTable(totalVal, dailyProfitSum, totalProfit);
             triggerMarketFlash(); 
+        }
+
+        function renderProfitBarChart(labels, dataPct) {
+            const ctx = document.getElementById('profitBarChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const backgroundColors = dataPct.map(val => val >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(239, 68, 68, 0.75)');
+            const borderColors = dataPct.map(val => val >= 0 ? '#10b981' : '#ef4444');
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'กำไร/ขาดทุนสะสม (%)',
+                        data: dataPct,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#f59e0b',
+                            font: { weight: 'bold', size: 11 },
+                            formatter: (value) => (value >= 0 ? '+' : '') + value + '%'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: '#1e293b' }
+                        },
+                        x: {
+                            ticks: { color: '#cbd5e1', font: { size: 11, weight: '600' } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHistoryTable(currentTotalVal, dailyProfit, totalProfit) {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+
+            let logsToRender = historyLogs.length > 0 ? historyLogs : [
+                { timestamp: nowStr, totalVal: currentTotalVal, dailyProfit: dailyProfit, totalProfit: totalProfit, status: 'Auto Sync' }
+            ];
+
+            logsToRender.slice(-5).reverse().forEach(log => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-gray-300 font-medium">${log.timestamp}</td>
+                    <td class="text-right font-semibold text-white">฿${formatNum(log.totalVal)}</td>
+                    <td class="text-right ${log.dailyProfit >= 0 ? 'text-green' : 'text-red'}">
+                        ${log.dailyProfit >= 0 ? '+' : ''}฿${formatNum(log.dailyProfit)}
+                    </td>
+                    <td class="text-right ${log.totalProfit >= 0 ? 'text-green' : 'text-red'} font-semibold">
+                        ${log.totalProfit >= 0 ? '+' : ''}฿${formatNum(log.totalProfit)}
+                    </td>
+                    <td class="text-center"><span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30">${log.status || 'Auto Sync'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function renderAllocation(totalVal) {
@@ -529,10 +704,15 @@
 
         async function saveToFirebase() {
             try {
+                const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
                 await fetch(DB_URL, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(funds)
+                    body: JSON.stringify({
+                        funds: funds,
+                        lastUpdated: nowStr,
+                        history: historyLogs
+                    })
                 });
             } catch (err) {
                 console.error("Save Error:", err);
@@ -542,14 +722,15 @@
         setInterval(triggerMarketFlash, 30000);
 
         loadData();
-// Register PWA Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('PWA Ready'))
-            .catch(err => console.error('SW Error:', err));
-    });
-}
+
+        // Register PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('PWA Ready'))
+                    .catch(err => console.error('SW Error:', err));
+            });
+        }
     </script>
 </body>
 </html>
