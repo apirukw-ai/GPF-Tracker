@@ -805,10 +805,7 @@
         }
 
         loadData();
-
-// เพิ่มบรรทัดนี้เข้าไป
-        setInterval(loadData, 60000);
-        
+       
         // Register PWA Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
