@@ -93,7 +93,7 @@
                 </span>
             </div>
 
-            <!-- Action Buttons Right (ปรับปรุงไอคอน Export/Import เรียบร้อยแล้ว) -->
+            <!-- Action Buttons Right -->
             <div class="flex flex-wrap gap-2">
                 <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> Export</button>
                 <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import</button>
@@ -228,7 +228,7 @@
         <!-- Target Allocation Table -->
         <div class="card-subtle p-3.5 overflow-x-auto">
             <h3 class="text-xs font-bold text-gold mb-2.5 flex items-center gap-2 uppercase tracking-wider">
-                <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย
+                <i class="fa-solid fa-sliders"></i> จัดสัดส่วนเป้าหมาย & Rebalance แผน กบข.
             </h3>
             <table>
                 <thead>
@@ -512,6 +512,10 @@
             const backgroundColors = dataPct.map(val => val >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(239, 68, 68, 0.75)');
             const borderColors = dataPct.map(val => val >= 0 ? '#10b981' : '#ef4444');
 
+            // คำนวณค่าสูงสุดเพื่อเผื่อพื้นที่ Headroom ด้านบนแกน Y ไม่ให้ Label โดนตัด
+            const maxVal = Math.max(...dataPct, 0);
+            const yMax = maxVal > 0 ? maxVal * 1.25 : undefined;
+
             chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -529,6 +533,11 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 25 // ระยะเว้นขอบบนป้องกันข้อความโดนตัด
+                        }
+                    },
                     plugins: {
                         legend: { display: false },
                         datalabels: {
@@ -541,6 +550,7 @@
                     },
                     scales: {
                         y: {
+                            suggestedMax: yMax,
                             ticks: { color: '#94a3b8', font: { size: 10 } },
                             grid: { color: '#1e293b' }
                         },
