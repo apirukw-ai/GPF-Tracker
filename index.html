@@ -54,6 +54,8 @@
         .btn-dark:hover { background-color: #334155; color: #fff; }
         .btn-blue { background-color: #0284c7; color: #fff; font-weight: 600; }
         .btn-blue:hover { background-color: #0369a1; }
+        .btn-emerald { background-color: #059669; color: #fff; font-weight: 600; }
+        .btn-emerald:hover { background-color: #047857; }
         
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 0.65rem 0.85rem; border-bottom: 1px solid #1e293b; }
@@ -95,14 +97,15 @@
 
             <!-- Action Buttons Right -->
             <div class="flex flex-wrap gap-2">
-                <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> Export</button>
+                <button onclick="exportCSV()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30"><i class="fa-solid fa-file-excel"></i> Export CSV</button>
+                <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> JSON</button>
                 <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import</button>
                 <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
                 <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
             </div>
         </header>
 
-        <!-- Real-time Market Movement -->
+        <!-- Real-time Market Movement (TradingView Live Widget) -->
         <div class="card-gold p-3">
             <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
@@ -113,54 +116,23 @@
                 </span>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="marketFeedGrid">
-                <div id="card-urth" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
-                    <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
-                        <span class="font-medium text-gray-200">MSCI World (URTH)</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 font-semibold">
-                        <span id="price-urth" class="text-white">207.83</span>
-                        <span id="change-urth" class="text-red text-[11px]">-1.39 (-0.66%)</span>
-                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    </div>
-                </div>
-
-                <div id="card-eem" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
-                    <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 rounded flex items-center justify-center bg-sky-500/20 text-sky-400 font-bold text-[10px]">i</span>
-                        <span class="font-medium text-gray-200">MSCI EM (EEM)</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 font-semibold">
-                        <span id="price-eem" class="text-white">66.62</span>
-                        <span id="change-eem" class="text-green text-[11px]">+0.51 (+0.77%)</span>
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    </div>
-                </div>
-
-                <div id="card-set50" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
-                    <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 rounded flex items-center justify-center bg-amber-500/20 text-amber-400 font-bold text-[10px]">S</span>
-                        <span class="font-medium text-gray-200">SET50 Index (TDEX)</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 font-semibold">
-                        <span id="price-set50" class="text-white">9.18</span>
-                        <span id="change-set50" class="text-green text-[11px]">+0.05 (+0.55%)</span>
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    </div>
-                </div>
-
-                <div id="card-reit" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between text-xs transition-all">
-                    <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 rounded flex items-center justify-center bg-purple-500/20 text-purple-400 font-bold text-[10px]">P</span>
-                        <span class="font-medium text-gray-200">PF & REIT (CPNREIT)</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 font-semibold">
-                        <span id="price-reit" class="text-white">11.40</span>
-                        <span id="change-reit" class="text-red text-[11px]">-0.10 (-0.87%)</span>
-                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    </div>
-                </div>
+            <!-- TradingView Ticker Widget -->
+            <div class="tradingview-widget-container rounded-lg overflow-hidden">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-tickers.js" async>
+                {
+                  "symbols": [
+                    { "proName": "AMEX:URTH", "title": "MSCI World" },
+                    { "proName": "AMEX:EEM", "title": "MSCI EM" },
+                    { "proName": "INDEX:SET50", "title": "SET50 Index" },
+                    { "proName": "SET:CPNREIT", "title": "CPNREIT" }
+                  ],
+                  "isTransparent": true,
+                  "showSymbolLogo": true,
+                  "colorTheme": "dark",
+                  "locale": "th_TH"
+                }
+                </script>
             </div>
         </div>
 
@@ -188,10 +160,20 @@
             </div>
         </div>
 
-        <!-- 2-Column Grid: Bar Chart & History Log Side-by-Side -->
+        <!-- Charts Grid: Line Chart (History Trend) & Bar Chart (Performance) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             
-            <!-- Left: Bar Chart Performance -->
+            <!-- Line Chart: Portfolio Growth Trend -->
+            <div class="card-subtle p-4 flex flex-col justify-between">
+                <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-chart-line"></i> แนวโน้มมูลค่าพอร์ตรวมย้อนหลัง (PORTFOLIO VALUE TREND)
+                </h3>
+                <div class="relative w-full h-56">
+                    <canvas id="trendLineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bar Chart: Performance Comparison -->
             <div class="card-subtle p-4 flex flex-col justify-between">
                 <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
                     <i class="fa-solid fa-chart-column"></i> เปรียบเทียบกำไร/ขาดทุนสะสมแต่ละแผนลงทุน (%)
@@ -201,7 +183,12 @@
                 </div>
             </div>
 
-            <!-- Right: Portfolio History Log Table -->
+        </div>
+
+        <!-- 2-Column Grid: History Log Table & Target Allocation -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            
+            <!-- Portfolio History Log Table -->
             <div class="card-subtle p-4 overflow-x-auto flex flex-col justify-between">
                 <div>
                     <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
@@ -223,25 +210,25 @@
                 <p class="text-[10px] text-gray-500 mt-2 text-right">* บันทึกอัตโนมัติเมื่อระบบดึงค่า NAV ประจำวัน</p>
             </div>
 
-        </div>
+            <!-- Target Allocation Table with Progress Bar & Rebalance Alert -->
+            <div class="card-subtle p-4 overflow-x-auto">
+                <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย & สถานะ REBALANCE
+                </h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อแผนลงทุน</th>
+                            <th class="text-right">มูลค่าปัจจุบัน</th>
+                            <th class="text-center w-32">สัดส่วนปัจจุบัน vs เป้าหมาย</th>
+                            <th class="text-right">ส่วนต่าง (%)</th>
+                            <th class="text-center">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocTableBody" class="text-xs"></tbody>
+                </table>
+            </div>
 
-        <!-- Target Allocation Table -->
-        <div class="card-subtle p-3.5 overflow-x-auto">
-            <h3 class="text-xs font-bold text-gold mb-2.5 flex items-center gap-2 uppercase tracking-wider">
-                <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย
-            </h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ชื่อแผนลงทุน กบข.</th>
-                        <th class="text-right">มูลค่าปัจจุบัน</th>
-                        <th class="text-right">สัดส่วนปัจจุบัน (%)</th>
-                        <th class="text-right">สัดส่วนเป้าหมาย (%)</th>
-                        <th class="text-right">ส่วนต่าง (%)</th>
-                    </tr>
-                </thead>
-                <tbody id="allocTableBody" class="text-xs"></tbody>
-            </table>
         </div>
 
         <!-- Main Funds Table -->
@@ -336,7 +323,8 @@
         const YTD_BASE_VAL = 1340202.52;
         let funds = [];
         let historyLogs = [];
-        let chartInstance = null;
+        let barChartInstance = null;
+        let lineChartInstance = null;
 
         function formatNum(num) {
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -353,17 +341,6 @@
             } else {
                 return `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">${code}</span>`;
             }
-        }
-
-        function triggerMarketFlash() {
-            const keys = ['urth', 'eem', 'set50', 'reit'];
-            keys.forEach(k => {
-                const card = document.getElementById(`card-${k}`);
-                if (card) {
-                    card.classList.add('flash-active');
-                    setTimeout(() => card.classList.remove('flash-active'), 1000);
-                }
-            });
         }
 
         async function loadData() {
@@ -498,16 +475,72 @@
 
             renderAllocation(totalVal);
             renderProfitBarChart(fundLabels, fundProfitPcts);
+            renderTrendLineChart();
             renderHistoryTable(totalVal, dailyProfitSum, totalProfit);
-            triggerMarketFlash(); 
         }
 
+        // Line Chart: Portfolio Growth Trend Line
+        function renderTrendLineChart() {
+            const ctx = document.getElementById('trendLineChart').getContext('2d');
+            if (lineChartInstance) lineChartInstance.destroy();
+
+            let labels = historyLogs.map(l => l.timestamp ? l.timestamp.split(' ')[0] : '');
+            let dataValues = historyLogs.map(l => l.totalVal);
+
+            if (historyLogs.length === 0) {
+                const nowStr = new Date().toLocaleDateString('th-TH');
+                const totalVal = funds.reduce((acc, f) => acc + (f.units * f.currentNav), 0);
+                labels = [nowStr];
+                dataValues = [totalVal];
+            }
+
+            lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'มูลค่าพอร์ตรวม (บาท)',
+                        data: dataValues,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: '#ffffff',
+                        pointHoverRadius: 6,
+                        pointRadius: 4,
+                        borderWidth: 2.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { 
+                                color: '#94a3b8', 
+                                font: { size: 10 },
+                                callback: (val) => '฿' + (val / 1000000).toFixed(2) + 'M'
+                            },
+                            grid: { color: '#1e293b' }
+                        },
+                        x: {
+                            ticks: { color: '#cbd5e1', font: { size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Bar Chart: Profit Performance
         function renderProfitBarChart(labels, dataPct) {
             const ctx = document.getElementById('profitBarChart').getContext('2d');
-            
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
+            if (barChartInstance) barChartInstance.destroy();
 
             const backgroundColors = dataPct.map(val => val >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(239, 68, 68, 0.75)');
             const borderColors = dataPct.map(val => val >= 0 ? '#10b981' : '#ef4444');
@@ -515,7 +548,7 @@
             const maxVal = Math.max(...dataPct, 0);
             const yMax = maxVal > 0 ? maxVal * 1.25 : undefined;
 
-            chartInstance = new Chart(ctx, {
+            barChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels,
@@ -532,11 +565,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: {
-                        padding: {
-                            top: 25
-                        }
-                    },
+                    layout: { padding: { top: 25 } },
                     plugins: {
                         legend: { display: false },
                         datalabels: {
@@ -559,6 +588,46 @@
                         }
                     }
                 }
+            });
+        }
+
+        // Target Allocation with Progress Bar & ±5% Rebalance Alert
+        function renderAllocation(totalVal) {
+            const allocBody = document.getElementById('allocTableBody');
+            allocBody.innerHTML = '';
+
+            funds.forEach(f => {
+                const fVal = f.units * f.currentNav;
+                const currentPct = totalVal > 0 ? (fVal / totalVal) * 100 : 0;
+                const targetPct = f.targetPct || 0;
+                const diffPct = currentPct - targetPct;
+
+                const isAlert = Math.abs(diffPct) >= 5.0;
+                const progressWidth = Math.min(Math.max(currentPct, 0), 100);
+
+                const statusBadge = isAlert
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse flex items-center justify-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> ควร Rebalance</span>`
+                    : `<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">สมดุล</span>`;
+
+                const barColor = isAlert ? 'bg-red-500' : 'bg-amber-500';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${getPlanBadge(f.code)}</td>
+                    <td class="text-right">฿${formatNum(fVal)}</td>
+                    <td class="text-center align-middle">
+                        <div class="flex justify-between text-[10px] text-gray-400 mb-0.5">
+                            <span class="text-white font-semibold">${currentPct.toFixed(1)}%</span>
+                            <span>เป้าหมาย ${targetPct.toFixed(1)}%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                            <div class="${barColor} h-2 rounded-full transition-all duration-500" style="width: ${progressWidth}%"></div>
+                        </div>
+                    </td>
+                    <td class="text-right ${diffPct >= 0 ? 'text-green' : 'text-red'} font-semibold">${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
+                    <td class="text-center">${statusBadge}</td>
+                `;
+                allocBody.appendChild(tr);
             });
         }
 
@@ -586,28 +655,6 @@
                     <td class="text-center"><span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30">${log.status || 'Auto Sync'}</span></td>
                 `;
                 tbody.appendChild(tr);
-            });
-        }
-
-        function renderAllocation(totalVal) {
-            const allocBody = document.getElementById('allocTableBody');
-            allocBody.innerHTML = '';
-
-            funds.forEach(f => {
-                const fVal = f.units * f.currentNav;
-                const currentPct = totalVal > 0 ? (fVal / totalVal) * 100 : 0;
-                const targetPct = f.targetPct || 0;
-                const diffPct = currentPct - targetPct;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${getPlanBadge(f.code)}</td>
-                    <td class="text-right">฿${formatNum(fVal)}</td>
-                    <td class="text-right">${currentPct.toFixed(1)}%</td>
-                    <td class="text-right">${targetPct.toFixed(1)}%</td>
-                    <td class="text-right ${diffPct >= 0 ? 'text-green' : 'text-red'} font-semibold">${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
-                `;
-                allocBody.appendChild(tr);
             });
         }
 
@@ -679,6 +726,34 @@
             }
         }
 
+        // CSV Export with UTF-8 BOM for Thai Excel Support
+        function exportCSV() {
+            if (!funds || funds.length === 0) {
+                alert("ไม่มีข้อมูลสำหรับส่งออก");
+                return;
+            }
+            
+            let csvContent = "\uFEFF"; // UTF-8 BOM Header
+            csvContent += "ชื่อแผนลงทุน,NAV ต้นทุน,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไร/ขาดทุนสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
+
+            funds.forEach(f => {
+                const fVal = f.units * f.currentNav;
+                const fCost = f.units * f.avgNav;
+                const profit = fVal - fCost;
+                const codeName = `"${(f.code || '').replace(/"/g, '""')}"`;
+                csvContent += `${codeName},${f.avgNav.toFixed(4)},${f.currentNav.toFixed(4)},${f.units},${fVal.toFixed(2)},${profit.toFixed(2)},${f.targetPct || 0}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", url);
+            downloadAnchor.setAttribute("download", `gpf_portfolio_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            document.body.removeChild(downloadAnchor);
+        }
+
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(funds));
             const downloadAnchor = document.createElement('a');
@@ -727,8 +802,6 @@
                 console.error("Save Error:", err);
             }
         }
-
-        setInterval(triggerMarketFlash, 30000);
 
         loadData();
 
