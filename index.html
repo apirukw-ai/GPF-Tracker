@@ -105,7 +105,7 @@
             </div>
         </header>
 
-        <!-- Real-time Market Movement (TradingView Live Widget) -->
+        <!-- Real-time Market Movement (TradingView Live Ticker Tape Widget) -->
         <div class="card-gold p-3">
             <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
@@ -116,10 +116,10 @@
                 </span>
             </div>
 
-            <!-- TradingView Ticker Widget -->
-            <div class="tradingview-widget-container rounded-lg overflow-hidden">
+            <!-- TradingView Ticker Tape Widget (รองรับการปัดซ้าย-ขวาบนมือถือ และวิ่งอัตโนมัติ) -->
+            <div class="tradingview-widget-container rounded-lg overflow-x-auto">
                 <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-tickers.js" async>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
                 {
                   "symbols": [
                     { "proName": "AMEX:URTH", "title": "MSCI World" },
@@ -127,8 +127,9 @@
                     { "proName": "INDEX:SET50", "title": "SET50 Index" },
                     { "proName": "SET:CPNREIT", "title": "CPNREIT" }
                   ],
-                  "isTransparent": true,
                   "showSymbolLogo": true,
+                  "isTransparent": true,
+                  "displayMode": "adaptive",
                   "colorTheme": "dark",
                   "locale": "th_TH"
                 }
@@ -805,6 +806,9 @@
 
         loadData();
 
+// เพิ่มบรรทัดนี้เข้าไป
+        setInterval(loadData, 60000);
+        
         // Register PWA Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
