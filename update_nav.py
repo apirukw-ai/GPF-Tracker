@@ -14,8 +14,15 @@ def fetch_gpf_nav():
         html = urllib.request.urlopen(req).read().decode('utf-8')
     except Exception as e:
         print(f"Error fetching GPF website: {e}")
-        return {}
+        return {}, None
 
+    # 1. ดึงวันที่ประกาศ NAV จริงจากหน้าเว็บ กบข. (ค้นหาคำว่า "ณ วันที่...")
+    nav_date_str = None
+    date_match = re.search(r'ณ\s*วันที่\s*([0-9]{1,2}[\s\/[ก-๙A-Za-z\.]+[0-9]{4})', html)
+    if date_match:
+        nav_date_str = date_match.group(1).strip()
+
+    # 2. ดึงราคา NAV แต่ละแผน
     nav_data = {}
     rows = re.findall(r'<tr.*?>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
 
@@ -33,9 +40,9 @@ def fetch_gpf_nav():
         elif 'อสังหาริมทรัพย์' in row:
             nav_data['แผนกองทุนอสังหาริมทรัพย์ไทย'] = nav_val
 
-    return nav_data
+    return nav_data, nav_date_str
 
-def update_firebase(nav_data):
+def update_firebase(nav_data, nav_date_str):
     if not nav_data:
         print("❌ ไม่พบข้อมูล NAV จากหน้าเว็บ กบข.")
         return
@@ -64,13 +71,18 @@ def update_firebase(nav_data):
             fund['currentNav'] = new_nav
             print(f"✅ Updated {code} -> NAV: {new_nav}")
 
-    # --- กำหนดเวลาไทย (UTC+7) อย่างแม่นยำ ---
+    # --- สร้างข้อความแสดงวันที่ NAV จริง + เวลาซิงค์ระบบ (UTC+7) ---
     tz_th = timezone(timedelta(hours=7))
-    now_str = datetime.now(tz_th).strftime('%d/%m/%Y %H:%M น.')
+    sync_time = datetime.now(tz_th).strftime('%d/%m %H:%M น.')
+    
+    if nav_date_str:
+        display_text = f"ณ วันที่ {nav_date_str} (Auto {sync_time})"
+    else:
+        display_text = f"{datetime.now(tz_th).strftime('%d/%m/%Y %H:%M น.')} (Auto)"
 
     if isinstance(current_data, dict):
         current_data['funds'] = funds_list
-        current_data['lastUpdated'] = f"{now_str} (Auto)"
+        current_data['lastUpdated'] = display_text
         payload = current_data
     else:
         payload = funds_list
@@ -78,9 +90,10 @@ def update_firebase(nav_data):
     req = urllib.request.Request(db_url, data=json.dumps(payload).encode('utf-8'), method='PUT')
     req.add_header('Content-Type', 'application/json')
     urllib.request.urlopen(req)
-    print(f"🚀 Firebase Updated Successfully at {now_str}!")
+    print(f"🚀 Firebase Updated Successfully: {display_text}")
 
 if __name__ == "__main__":
-    navs = fetch_gpf_nav()
+    navs, nav_date = fetch_gpf_nav()
     print("NAV ที่ดึงได้ล่าสุด:", navs)
-    update_firebase(navs)
+    print("วันที่ NAV จากเว็บ กบข.:", nav_date)
+    update_firebase(navs, nav_date)
