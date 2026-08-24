@@ -1,6 +1,7 @@
 import urllib.request
 import re
 import json
+from datetime import datetime, timezone, timedelta
 
 GPF_URL = "https://www.gpf.or.th/thai2019/About/main.php?page=memberfund&lang=th&size=n&pattern=n&menu=statistic"
 
@@ -9,7 +10,11 @@ def fetch_gpf_nav():
         GPF_URL, 
         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     )
-    html = urllib.request.urlopen(req).read().decode('utf-8')
+    try:
+        html = urllib.request.urlopen(req).read().decode('utf-8')
+    except Exception as e:
+        print(f"Error fetching GPF website: {e}")
+        return {}
 
     nav_data = {}
     rows = re.findall(r'<tr.*?>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
@@ -32,7 +37,7 @@ def fetch_gpf_nav():
 
 def update_firebase(nav_data):
     if not nav_data:
-        print("ไม่พบข้อมูล NAV จากหน้าเว็บ")
+        print("❌ ไม่พบข้อมูล NAV จากหน้าเว็บ กบข.")
         return
 
     db_url = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json"
@@ -40,25 +45,40 @@ def update_firebase(nav_data):
     req = urllib.request.Request(db_url)
     current_data = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
 
-    for fund in current_data:
+    if isinstance(current_data, dict):
+        funds_list = current_data.get('funds', [])
+    else:
+        funds_list = current_data
+
+    for fund in funds_list:
         code = fund.get('code')
         if code in nav_data:
             new_nav = nav_data[code]
             old_nav = fund.get('currentNav', 0)
 
-            # คำนวณ % การเปลี่ยนแปลง และบันทึกในชื่อ dailyPct ให้ตรงกับหน้าเว็บ
             if old_nav > 0 and new_nav != old_nav:
                 pct_change = ((new_nav - old_nav) / old_nav) * 100
                 fund['prevNav'] = old_nav
                 fund['dailyPct'] = round(pct_change, 2)
             
             fund['currentNav'] = new_nav
-            print(f"Updated {code} -> NAV: {new_nav} (1D: {fund.get('dailyPct', 0)}%)")
+            print(f"✅ Updated {code} -> NAV: {new_nav}")
 
-    req = urllib.request.Request(db_url, data=json.dumps(current_data).encode('utf-8'), method='PUT')
+    # --- กำหนดเวลาไทย (UTC+7) อย่างแม่นยำ ---
+    tz_th = timezone(timedelta(hours=7))
+    now_str = datetime.now(tz_th).strftime('%d/%m/%Y %H:%M น.')
+
+    if isinstance(current_data, dict):
+        current_data['funds'] = funds_list
+        current_data['lastUpdated'] = f"{now_str} (Auto)"
+        payload = current_data
+    else:
+        payload = funds_list
+
+    req = urllib.request.Request(db_url, data=json.dumps(payload).encode('utf-8'), method='PUT')
     req.add_header('Content-Type', 'application/json')
     urllib.request.urlopen(req)
-    print("Firebase Updated Successfully!")
+    print(f"🚀 Firebase Updated Successfully at {now_str}!")
 
 if __name__ == "__main__":
     navs = fetch_gpf_nav()
