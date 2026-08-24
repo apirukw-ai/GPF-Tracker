@@ -82,8 +82,9 @@ def update_firebase(nav_data, nav_date_str):
     tz_th = timezone(timedelta(hours=7))
     sync_time = datetime.now(tz_th).strftime('%d/%m %H:%M น.')
     
+    # ปรับรูปแบบข้อความให้กระชับ เพื่อต่อกับคำว่า "อัปเดต NAV ล่าสุด:" บนหน้าเว็บ
     if nav_date_str:
-        display_text = f"ณ วันที่ {nav_date_str} (Auto {sync_time})"
+        display_text = f"{nav_date_str} (Auto {sync_time})"
     else:
         display_text = f"{datetime.now(tz_th).strftime('%d/%m/%Y %H:%M น.')} (Auto)"
 
