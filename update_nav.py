@@ -11,8 +11,7 @@ def fetch_gpf_nav():
         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     )
     try:
-        raw_data = urllib.request.urlopen(req).read()
-        # รองรับทั้ง UTF-8 และ TIS-620 ของเว็บ กบข.
+        raw_data = urllib.request.urlopen(req, timeout=15).read()
         try:
             html = raw_data.decode('utf-8')
         except UnicodeDecodeError:
@@ -21,9 +20,13 @@ def fetch_gpf_nav():
         print(f"Error fetching GPF website: {e}")
         return {}, None
 
-    # 1. ค้นหาวันที่ประกาศ NAV (รองรับหลายรูปแบบภาษาไทย)
+    # 1. ดึง "วันที่ประกาศใช้" NAV จริงจากหน้าเว็บ กบข. (รองรับคำว่า วันที่ประกาศใช้ / ณ วันที่)
     nav_date_str = None
-    date_match = re.search(r'(?:ณ\s*วันที่|ประจำวันที่)\s*([0-9]{1,2}[\s\/[ก-๙A-Za-z\.]+[0-9]{4})', html)
+    date_match = re.search(
+        r'(?:วันที่ประกาศใช้|ณ\s*วันที่|ประจำวันที่).*?(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{4}|[0-9]{1,2}\s+[ก-๙\.]+\s+[0-9]{4})', 
+        html, 
+        re.DOTALL | re.IGNORECASE
+    )
     if date_match:
         nav_date_str = date_match.group(1).strip()
 
@@ -75,7 +78,7 @@ def update_firebase(nav_data, nav_date_str):
             
             fund['currentNav'] = new_nav
 
-    # รวมรูปแบบข้อความวันที่แสดงผล
+    # สร้างข้อความวันที่แสดงผล
     tz_th = timezone(timedelta(hours=7))
     sync_time = datetime.now(tz_th).strftime('%d/%m %H:%M น.')
     
@@ -98,4 +101,6 @@ def update_firebase(nav_data, nav_date_str):
 
 if __name__ == "__main__":
     navs, nav_date = fetch_gpf_nav()
+    print("NAV ที่ดึงได้ล่าสุด:", navs)
+    print("วันที่ประกาศใช้จาก กบข.:", nav_date)
     update_firebase(navs, nav_date)
