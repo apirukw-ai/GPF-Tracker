@@ -346,7 +346,7 @@
 
         async function loadData() {
             try {
-                const res = await fetch(DB_URL);
+                const res = await fetch(DB_URL + '?t=' + Date.now());
                 const data = await res.json();
                 
                 if (Array.isArray(data)) {
