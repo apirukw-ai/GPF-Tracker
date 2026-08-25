@@ -33,7 +33,7 @@ def fetch_gpf_nav():
     print("ALL DATES =", date_matches)
 
     if date_matches:
-    nav_date_str = date_matches[-1]
+        nav_date_str = date_matches[-1]
 
     nav_data = {}
     rows = re.findall(r'<tr.*?>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
