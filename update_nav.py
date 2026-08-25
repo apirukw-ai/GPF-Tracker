@@ -49,6 +49,9 @@ def fetch_gpf_nav():
         elif 'อสังหาริมทรัพย์' in row:
             nav_data['แผนกองทุนอสังหาริมทรัพย์ไทย'] = nav_val
 
+print("NAV DATE =", nav_date_str)
+print("NAV DATA =", nav_data)
+    
     return nav_data, nav_date_str
 
 def update_firebase(nav_data, nav_date_str):
