@@ -145,17 +145,17 @@
                 <p class="text-[10px] text-gray-500 mt-1">อัปเดตอัตโนมัติทุกวันทำการ</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนสะสม</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไรสะสม</p>
                 <h2 id="totalProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
                 <p id="totalProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% จากต้นทุน</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนวันนี้</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไรวันนี้</p>
                 <h2 id="dailyProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
                 <p id="dailyProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% วันนี้</p>
             </div>
             <div class="card-subtle p-3.5">
-                <p class="text-xs text-gray-400 font-medium mb-1">กำไร/ขาดทุนตั้งแต่ต้นปี (YTD)</p>
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไรตั้งแต่ต้นปี (YTD)</p>
                 <h2 id="ytdProfitDisplay" class="text-xl font-extrabold text-gold">0.00% YTD</h2>
                 <p id="ytdProfitSub" class="text-[10px] text-gray-400 mt-1">เทียบกับ 1 ม.ค. 69 (฿1,340,202.52)</p>
             </div>
@@ -177,7 +177,7 @@
             <!-- Bar Chart: Performance Comparison -->
             <div class="card-subtle p-4 flex flex-col justify-between">
                 <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
-                    <i class="fa-solid fa-chart-column"></i> เปรียบเทียบกำไร/ขาดทุนสะสมแต่ละแผนลงทุน (%)
+                    <i class="fa-solid fa-chart-column"></i> เปรียบเทียบกำไรสะสมแต่ละแผนลงทุน (%)
                 </h3>
                 <div class="relative w-full h-56">
                     <canvas id="profitBarChart"></canvas>
@@ -201,7 +201,7 @@
                                 <th>วัน-เวลา บันทึก</th>
                                 <th class="text-right">มูลค่าพอร์ตรวม</th>
                                 <th class="text-right">เปลี่ยนแปลงรายวัน</th>
-                                <th class="text-right">กำไร/ขาดทุนสะสม</th>
+                                <th class="text-right">กำไรสะสม</th>
                                 <th class="text-center">สถานะ</th>
                             </tr>
                         </thead>
@@ -256,8 +256,8 @@
                         <th class="text-right">NAV ปัจจุบัน</th>
                         <th class="text-right">จำนวนหน่วย</th>
                         <th class="text-right">มูลค่าปัจจุบัน</th>
-                        <th class="text-right">กำไร/ขาดทุนสะสม</th>
-                        <th class="text-right">กำไร/ขาดทุนวันนี้</th>
+                        <th class="text-right">กำไรทุนสะสม</th>
+                        <th class="text-right">กำไรวันนี้</th>
                         <th class="text-right">ผลงานตั้งแต่ต้นปี (YTD)</th>
                         <th class="text-center">จัดการ</th>
                     </tr>
@@ -554,7 +554,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'กำไร/ขาดทุนสะสม (%)',
+                        label: 'กำไรสะสม (%)',
                         data: dataPct,
                         backgroundColor: backgroundColors,
                         borderColor: borderColors,
@@ -735,7 +735,7 @@
             }
             
             let csvContent = "\uFEFF"; // UTF-8 BOM Header
-            csvContent += "ชื่อแผนลงทุน,NAV ต้นทุน,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไร/ขาดทุนสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
+            csvContent += "ชื่อแผนลงทุน,NAV ต้นทุน,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
 
             funds.forEach(f => {
                 const fVal = f.units * f.currentNav;
