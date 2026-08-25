@@ -28,7 +28,11 @@ def fetch_gpf_nav():
 
     nav_date_str = None
     date_pattern = r'(?:วันที่ประกาศใช้|ณ\s*วันที่|ประจำวันที่)[\s\S]*?(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{4}|\d{1,2}\s+[ก-๙\.]+\s+\d{4})'
-    date_match = re.search(date_pattern, html, re.IGNORECASE)
+    date_matches = re.findall(date_pattern, html, re.IGNORECASE)
+    print("ALL DATES =", date_matches)
+
+    if date_matches:
+        nav_date_str = date_matches[-1]
     if date_match:
         nav_date_str = date_match.group(1).strip()
 
