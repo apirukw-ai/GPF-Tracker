@@ -32,8 +32,24 @@ def fetch_gpf_nav():
 
     print("ALL DATES =", date_matches)
 
+    from datetime import datetime
+
+    valid_dates = []
+    invalid_dates = []
+
+    for d in date_matches:
+    try:
+        datetime.strptime(d, "%d/%m/%Y")
+        valid_dates.append(d)
+    except:
+        invalid_dates.append(d)
+
+    print("VALID DATES =", valid_dates)
+    print("INVALID DATES =", invalid_dates)
+    
     if date_matches:
-        nav_date_str = date_matches[0]
+    nav_date_str = date_matches[0]
+    print("SELECTED DATE =", nav_date_str)
 
     nav_data = {}
     rows = re.findall(r'<tr.*?>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
