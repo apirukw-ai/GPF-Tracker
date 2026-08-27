@@ -87,7 +87,6 @@ def update_firebase(nav_data, nav_date_str):
         print(f"❌ Error fetching Firebase: {e}")
         return
 
-    # ดึงเฉพาะรายการกองทุน
     if isinstance(current_data, dict):
         funds_list = current_data.get('funds', [])
     elif isinstance(current_data, list):
@@ -116,7 +115,6 @@ def update_firebase(nav_data, nav_date_str):
     else:
         display_text = f"{datetime.now(tz_th).strftime('%d/%m/%Y %H:%M น.')} (Auto)"
 
-    # 🎯 บังคับสร้างโครงสร้าง Object ที่มี lastUpdated เสมอ
     payload = {
         "funds": funds_list,
         "lastUpdated": display_text
