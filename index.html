@@ -682,7 +682,7 @@
             });
         }
 
-/* ---------------- PDF Statement Processing Engine (ปรับปรุงการอ่านข้อความภาษาไทย) ---------------- */
+/* ---------------- PDF Statement Processing Engine (Fix Match & Multi-Column Parsing) ---------------- */
 async function processPdfStatement(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -701,45 +701,68 @@ async function processPdfStatement(event) {
 
         console.log("RAW PDF TEXT =", fullText);
 
-        // คลีนข้อความ รวบ Spacing ที่กระจัดกระจาย
+        // คลีน Space รวบช่องว่างหลายตัวให้เหลือช่องเดียว
         fullText = fullText.replace(/\s+/g, ' ');
-
         console.log("CLEAN PDF TEXT =", fullText);
 
-        // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาคำได้แม่นยำ
+        // ลบช่องว่างระหว่างอักษรภาษาไทย
         const compactText = fullText.replace(/([ก-๙])\s+(?=[ก-๙])/g, '$1');
-
         console.log("COMPACT THAI TEXT =", compactText);
 
         const planTargets = [
-            { id: "gpf_thai", key: "หุ้นไทย", name: "แผนหุ้นไทย" },
-            { id: "gpf_prop", key: "อสังหาริมทรัพย์", name: "แผนกองทุนอสังหาริมทรัพย์ไทย" },
-            { id: "gpf_global", key: "ต่างประเทศ", name: "แผนหุ้นต่างประเทศ" },
-            { id: "gpf_bond", key: "ตราสารหนี้", name: "แผนตราสารหนี้" }
+            { id: "gpf_thai", key: "แผนหุ้นไทย", altKey: "หุ้นไทย" },
+            { id: "gpf_prop", key: "แผนกองทุนอสังหาริมทรัพย์ไทย", altKey: "อสังหาริมทรัพย์" },
+            { id: "gpf_global", key: "แผนหุ้นต่างประเทศ", altKey: "ต่างประเทศ" },
+            { id: "gpf_bond", key: "แผนตราสารหนี้", altKey: "ตราสารหนี้" }
         ];
 
         let updatedCount = 0;
 
         planTargets.forEach(target => {
-            const fund = funds.find(f => f.id === target.id || f.code.includes(target.key));
+            const fund = funds.find(f => f.id === target.id || f.code.includes(target.altKey));
             if (!fund) return;
 
-            // Regex ค้นหาบรรทัดที่มีชื่อแผน และดึงมูลค่าต่อหน่วย (NAV) + จำนวนหน่วย ล่าสุด
-            const regex = new RegExp(target.key + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
+            // ค้นหาตำแหน่งเริ่มต้นของแผนนั้นๆ ในข้อความ
+            const planIdx = compactText.indexOf(target.altKey);
+            if (planIdx === -1) return;
+
+            // ตัดเฉพาะ Block ข้อความของแผนนั้นๆ (ความยาว 1,500 ตัวอักษรถัดไป) เพื่อไม่ให้ลามไปแผนอื่น
+            const blockText = compactText.substring(planIdx, planIdx + 1500);
+
+            // Debug Log พิมพ์บล็อกข้อความของแผนนี้ออกมาตรวจสอบ
+            console.log("==========");
+            console.log("PLAN NAME =", target.key);
+            console.log("BLOCK TEXT =", blockText);
+            console.log("==========");
+
+            /* 
+               Regex จับรูปแบบชุดตัวเลขธุรกรรม:
+               [NAV ต้นทุน (4 ตำแหน่ง)] [จำนวนหน่วย (4 ตำแหน่ง)] [จำนวนเงิน (2 ตำแหน่ง)]
+            */
+            const numberPattern = /([\d,]+\.\d{4})\s+([\d,]+\.\d{4})\s+([\d,]+\.\d{2})/g;
             let match;
             let lastCostNav = 0;
             let lastUnits = 0;
 
-            while ((match = regex.exec(compactText)) !== null) {
-                lastCostNav = parseFloat(match[1].replace(/,/g, ''));
-                lastUnits = parseFloat(match[2].replace(/,/g, ''));
+            // วนลูปหาค่าชุดสุดท้าย (ธุรกรรมล่าสุดในตาราง)
+            while ((match = numberPattern.exec(blockText)) !== null) {
+                const navVal = parseFloat(match[1].replace(/,/g, ''));
+                const unitVal = parseFloat(match[2].replace(/,/g, ''));
+
+                // กรองไม่เอาค่าสับเปลี่ยนออกที่เป็นติดลบ หรือค่าที่ผิดปกติ
+                if (navVal > 0 && unitVal > 0) {
+                    lastCostNav = navVal;
+                    lastUnits = unitVal;
+                }
             }
 
             if (lastCostNav > 0 && lastUnits > 0) {
-                console.log(`MATCH SUCCESS [${target.name}]: NAV = ${lastCostNav}, Units = ${lastUnits}`);
+                console.log(`MATCH SUCCESS [${target.key}]: NAV = ${lastCostNav}, Units = ${lastUnits}`);
                 fund.avgNav = lastCostNav; // อัปเดต NAV ต้นทุนถัวเฉลี่ย
-                fund.units = lastUnits;   // อัปเดตจำนวนหน่วยล่าสุด
+                fund.units = lastUnits;   // อัปเดตจำนวนหน่วยสะสม
                 updatedCount++;
+            } else {
+                console.log(`MATCH FAILED [${target.key}]: ไม่พบตัวเลขชุดธุรกรรมใน Block`);
             }
         });
 
@@ -748,7 +771,7 @@ async function processPdfStatement(event) {
             renderAll();
             alert(`นำเข้า PDF Statement สำเร็จ! อัปเดต NAV ต้นทุน (avgNav) และหน่วยเรียบร้อยแล้ว ${updatedCount} แผน`);
         } else {
-            alert("ไม่สามารถอ่านข้อมูลแผนลงทุนจากไฟล์ PDF ได้ กรุณาตรวจสอบ Console Log สำหรับข้อมูลเพิ่มเติม");
+            alert("ไม่สามารถอ่านข้อมูลแผนลงทุนจากไฟล์ PDF ได้ กรุณาตรวจสอบ Console Log");
         }
 
     } catch (err) {
