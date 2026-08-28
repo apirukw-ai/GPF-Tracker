@@ -705,7 +705,6 @@ async function processPdfStatement(event) {
         // --- เพิ่มโค้ด Debug บล็อกเปลี่ยนแผนการลงทุน เข้า ตามที่ระบุ ---
         const cleanText = fullText.replace(/\s+/g, ' ');
 
-console.log("CLEAN PDF TEXT =", cleanText);
 console.log(
     cleanText.substring(
         cleanText.indexOf("13 ก ร ก ฎ า ค ม"),
@@ -759,6 +758,7 @@ console.log(
 
             // ค้นหาข้อความใน switchBlock ที่สกัดออกมา
             const regex = new RegExp(target.altKey + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
+            
             let match;
 let lastCostNav = 0;
 let lastUnits = 0;
