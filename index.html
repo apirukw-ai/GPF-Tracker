@@ -9,6 +9,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GPF Tracker">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2953/2953361.png">
@@ -22,6 +23,12 @@
     
     <!-- Tesseract.js (OCR Engine) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- PDF.js Engine (PDF Snapshot) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 
     <style>
         :root {
@@ -57,6 +64,8 @@
         .btn-dark:hover { background-color: #334155; color: #fff; }
         .btn-blue { background-color: #0284c7; color: #fff; font-weight: 600; }
         .btn-blue:hover { background-color: #0369a1; }
+        .btn-emerald { background-color: #059669; color: #fff; font-weight: 600; }
+        .btn-emerald:hover { background-color: #047857; }
         
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 0.65rem 0.85rem; border-bottom: 1px solid #1e293b; }
@@ -90,6 +99,12 @@
 
             <!-- Action Buttons Right -->
             <div class="flex flex-wrap gap-2">
+                <!-- PDF Snapshot Import -->
+                <button onclick="document.getElementById('pdfFileInput').click()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30">
+                    <i class="fa-solid fa-file-pdf"></i> PDF Snapshot Import
+                </button>
+                <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="processPdfSnapshot(event)">
+
                 <!-- สแกนรูปสลิป (OCR) -->
                 <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30">
                     <i class="fa-solid fa-camera"></i> ปุ่มสแกนรูปสลิป (OCR)
@@ -99,37 +114,6 @@
                 <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผน</button>
             </div>
         </header>
-
-        <!-- Real-time Market Movement -->
-        <div class="card-gold p-3">
-            <div class="flex justify-between items-center mb-2 px-1">
-                <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line"></i> ดัชนีอ้างอิงตลาดการเงิน (TRADINGVIEW REAL-TIME FEEDS)
-                </h3>
-                <span class="text-[11px] text-green font-semibold flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Market
-                </span>
-            </div>
-
-            <div class="tradingview-widget-container rounded-lg overflow-x-auto">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                {
-                  "symbols": [
-                    { "proName": "AMEX:URTH", "title": "MSCI World" },
-                    { "proName": "AMEX:EEM", "title": "MSCI EM" },
-                    { "proName": "AMEX:VNQ", "title": "Real Estate (อสังหาฯ)" },
-                    { "proName": "FX_IDC:USDTHB", "title": "USD/THB (ค่าเงินบาท)" }
-                  ],
-                  "showSymbolLogo": true,
-                  "isTransparent": true,
-                  "displayMode": "adaptive",
-                  "colorTheme": "dark",
-                  "locale": "th_TH"
-                }
-                </script>
-            </div>
-        </div>
 
         <!-- Top Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -237,9 +221,9 @@
                 <thead>
                     <tr>
                         <th>ชื่อแผนลงทุน</th>
-                        <th class="text-right">NAV ต้นทุนถัวเฉลี่ย (Avg)</th>
-                        <th class="text-right">NAV ปัจจุบัน (Auto)</th>
-                        <th class="text-right">จำนวนหน่วยสะสม</th>
+                        <th class="text-right">NAV ต้นทุนถัวเฉลี่ย (calc: avgNav)</th>
+                        <th class="text-right">NAV ปัจจุบัน (Auto NAV)</th>
+                        <th class="text-right">จำนวนหน่วยสะสม (PDF/OCR)</th>
                         <th class="text-right">มูลค่าปัจจุบัน</th>
                         <th class="text-right">กำไรทุนสะสม</th>
                         <th class="text-right">กำไรวันนี้</th>
@@ -300,7 +284,7 @@
             <div class="border-2 border-dashed border-slate-700 p-4 rounded-xl mb-3 hover:border-amber-500 cursor-pointer bg-slate-900/50 transition-all" onclick="document.getElementById('fileInput').click()">
                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-gold mb-2"></i>
                 <p class="text-xs font-semibold text-white">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
-                <p class="text-[10px] text-gray-400 mt-1">สแกนดึง วันที่, NAV, จำนวนหน่วย และจำนวนเงิน เพื่อบันทึกประวัติการซื้อและคำนวณ avgNav อัตโนมัติ</p>
+                <p class="text-[10px] text-gray-400 mt-1">สแกนดึง วันที่, NAV, จำนวนหน่วย และจำนวนเงิน เพื่อบันทึกประวัติ gpf_transactions และคำนวณ avgNav อัตโนมัติ</p>
                 <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processOcrImage(event)">
             </div>
 
@@ -320,8 +304,8 @@
 
                 <div id="ocrPlanListContainer" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
 
-                <p class="text-[10px] text-emerald-400/90 italic mt-1">* ระบบจะบันทึกเข้าประวัติธุรกรรม และคำนวณ NAV ต้นทุนถัวเฉลี่ย (avgNav) ให้อัตโนมัติ</p>
-                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2.5 rounded text-xs font-bold mt-2 shadow-lg shadow-amber-900/30"><i class="fa-solid fa-check-double mr-1"></i> บันทึกธุรกรรม & คำนวณ avgNav ใหม่</button>
+                <p class="text-[10px] text-emerald-400/90 italic mt-1">* ระบบจะบันทึกเข้าประวัติ gpf_transactions และคำนวณ NAV ต้นทุนถัวเฉลี่ย (avgNav) ให้อัตโนมัติ</p>
+                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2.5 rounded text-xs font-bold mt-2 shadow-lg shadow-amber-900/30"><i class="fa-solid fa-check-double mr-1"></i> บันทึก gpf_transactions & คำนวณ avgNav ใหม่</button>
             </div>
 
             <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-1.5 rounded text-xs w-full">ปิดหน้าต่าง</button>
@@ -337,6 +321,14 @@
         let barChartInstance = null;
         let lineChartInstance = null;
         let detectedOcrPlans = [];
+
+        // Mapping Table จับคู่แผนกับ fundId ชัดเจน
+        const PLAN_MAPPING = [
+            { keywords: ["หุ้นไทย", "SET"], fundId: "gpf_thai" },
+            { keywords: ["อสังหา", "อสังหาริมทรัพย์", "REIT"], fundId: "gpf_prop" },
+            { keywords: ["ต่างประเทศ", "หุ้นต่างประเทศ"], fundId: "gpf_global" },
+            { keywords: ["ตราสารหนี้"], fundId: "gpf_bond" }
+        ];
 
         function formatNum(num) {
             return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -355,27 +347,27 @@
             }
         }
 
-        // --- ระบบคำนวณ avgNav, totalUnits, totalCost อัตโนมัติจาก Transaction History ---
+        function getFundIdByPlanName(planName) {
+            const rule = PLAN_MAPPING.find(m => m.keywords.some(kw => planName.includes(kw)));
+            return rule ? rule.fundId : null;
+        }
+
+        /* ---------------- Owner: recalculateAvgNavs() ----------------
+           คำนวณเฉพาะ avgNav จาก gpf_transactions (Single Source of Truth)
+           ห้ามแตะ fund.units และ fund.currentNav โดยเด็ดขาด
+        ------------------------------------------------------------- */
         function recalculateAvgNavs() {
             if (!gpfTransactions || gpfTransactions.length === 0) return;
 
             funds.forEach(fund => {
-                // ดึงรายการซื้อขายของกองทุนนี้
-                const planTxns = gpfTransactions.filter(t => {
-                    if (fund.id === "gpf_thai" && t.plan.includes("หุ้นไทย")) return true;
-                    if (fund.id === "gpf_prop" && (t.plan.includes("อสังหา") || t.plan.includes("REIT"))) return true;
-                    if (fund.id === "gpf_global" && t.plan.includes("ต่างประเทศ")) return true;
-                    if (fund.id === "gpf_bond" && t.plan.includes("ตราสารหนี้")) return true;
-                    return fund.code.includes(t.plan);
-                });
+                const planTxns = gpfTransactions.filter(t => t.fundId === fund.id);
 
                 if (planTxns.length > 0) {
                     const totalCost = planTxns.reduce((sum, t) => sum + (t.amount || (t.units * t.nav)), 0);
                     const totalUnits = planTxns.reduce((sum, t) => sum + t.units, 0);
 
                     if (totalUnits > 0) {
-                        fund.units = totalUnits;
-                        fund.avgNav = totalCost / totalUnits; // ต้นทุนสะสม / หน่วยสะสม
+                        fund.avgNav = totalCost / totalUnits; // อัปเดตเฉพาะ avgNav
                     }
                 }
             });
@@ -400,7 +392,6 @@
                     funds = [];
                 }
 
-                // คลีนกองทุนขยะออกก่อน
                 funds = funds.filter(f => !f.id.startsWith('fund_'));
                 
                 recalculateAvgNavs();
@@ -711,7 +702,110 @@
             });
         }
 
-        /* ---------------- OCR Processing Engine ---------------- */
+        /* ---------------- Owner: PDF Snapshot Import (Owner: units) ----------------
+           อ่านอัปเดต fund.units และสร้าง gpf_transactions (ห้ามแตะ currentNav และ avgNav)
+        -------------------------------------------------------------------------- */
+        async function processPdfSnapshot(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                let fullText = "";
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(" ");
+                    fullText += pageText + "\n";
+                }
+
+                const cleanText = fullText.replace(/\s+/g, ' ');
+                let compactText = cleanText;
+
+                for (let i = 0; i < 20; i++) {
+                    compactText = compactText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
+                }
+
+                let docDate = new Date().toISOString().slice(0, 10);
+                const dateMatch = compactText.match(/ณ\s*วันที่\s*(\d{1,2})\s*([ก-๙]+)\s*(\d{4})/);
+                if (dateMatch) {
+                    docDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+                }
+
+                let updatedCount = 0;
+                let navDiscrepancies = [];
+
+                PLAN_MAPPING.forEach(rule => {
+                    const fund = funds.find(f => f.id === rule.fundId);
+                    if (!fund) return;
+
+                    const regex = new RegExp(`แผน${rule.keywords[0]}[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{2})`, "g");
+                    const match = regex.exec(compactText);
+
+                    if (match) {
+                        const pdfUnits = parseFloat(match[1].replace(/,/g, ''));
+                        const pdfNav = parseFloat(match[2].replace(/,/g, ''));
+                        const pdfAmount = parseFloat(match[3].replace(/,/g, ''));
+
+                        if (pdfUnits > 0) {
+                            fund.units = pdfUnits; // ✅ Owner: PDF Snapshot อัปเดต fund.units
+                            updatedCount++;
+
+                            if (pdfNav > 0 && Math.abs(pdfNav - fund.currentNav) > 0.0001) {
+                                navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF (${pdfNav.toFixed(4)}) vs Auto NAV (${fund.currentNav.toFixed(4)})`);
+                            }
+
+                            // เพิ่มลง gpf_transactions (Append-Only)
+                            gpfTransactions.push({
+                                fundId: fund.id,
+                                date: docDate,
+                                nav: pdfNav,
+                                units: pdfUnits,
+                                amount: pdfAmount
+                            });
+                        }
+                    }
+                });
+
+                if (updatedCount > 0) {
+                    recalculateAvgNavs();
+                    await saveToFirebase();
+                    renderAll();
+
+                    let alertMsg = `อัปเดตจำนวนหน่วยสะสม (units) จาก PDF Snapshot สำเร็จ ${updatedCount} แผน!`;
+                    if (navDiscrepancies.length > 0) {
+                        alertMsg += `\n\n⚠️ แจ้งเตือน NAV ไม่ตรงกับ Auto NAV:\n` + navDiscrepancies.join('\n');
+                    }
+                    alert(alertMsg);
+                } else {
+                    alert("ไม่พบรูปแบบข้อมูลแผนลงทุนในไฟล์ PDF สรุปพอร์ต กรุณาตรวจสอบไฟล์");
+                }
+
+            } catch (err) {
+                console.error("PDF Snapshot Error:", err);
+                alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF Snapshot");
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+/*
+======================================
+PDF PARSER (EXPERIMENTAL)
+
+- ไม่เขียนข้อมูลเข้าพอร์ตจริง
+- ใช้เพื่อทดสอบการสกัดข้อมูลเท่านั้น
+- OCR เป็นช่องทางหลักในปัจจุบัน
+
+======================================
+*/
+        async function processPdfStatementExperimental(event) {
+            // โค้ดทดสอบการดึงข้อมูลย้อนหลัง
+        }
+
+        /* ---------------- Owner: OCR Processing Engine (Owner: units & Transactions) ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -757,14 +851,15 @@
                                 const nav = currentPlan.numbers[0];
                                 const units = currentPlan.numbers[1];
                                 const amount = currentPlan.numbers[2] || (nav * units);
+                                const fId = getFundIdByPlanName(currentPlan.name);
 
                                 detectedOcrPlans.push({
+                                    fundId: fId,
                                     date: todayStr,
-                                    plan: currentPlan.name,
                                     nav: nav,
                                     units: units,
                                     amount: amount,
-                                    type: "contribution"
+                                    planName: currentPlan.name
                                 });
                             }
 
@@ -787,14 +882,15 @@
                         const nav = currentPlan.numbers[0];
                         const units = currentPlan.numbers[1];
                         const amount = currentPlan.numbers[2] || (nav * units);
+                        const fId = getFundIdByPlanName(currentPlan.name);
 
                         detectedOcrPlans.push({
+                            fundId: fId,
                             date: todayStr,
-                            plan: currentPlan.name,
                             nav: nav,
                             units: units,
                             amount: amount,
-                            type: "contribution"
+                            planName: currentPlan.name
                         });
                     }
 
@@ -812,12 +908,13 @@
                         div.className = "bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-2";
                         div.innerHTML = `
                             <div class="flex justify-between items-center border-b border-slate-700/80 pb-1">
-                                <span class="font-bold text-amber-400 text-xs">#${index + 1} แผน${item.plan}</span>
-                                <input type="hidden" id="ocrPlanName_${index}" value="${item.plan}">
+                                <span class="font-bold text-amber-400 text-xs">#${index + 1} แผน${item.planName}</span>
+                                <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
+                                <input type="hidden" id="ocrFundId_${index}" value="${item.fundId || ''}">
                             </div>
                             <div class="grid grid-cols-3 gap-2">
                                 <div>
-                                    <label class="text-gray-400 text-[10px]">NAV ซื้อ:</label>
+                                    <label class="text-gray-400 text-[10px]">NAV วันซื้อ:</label>
                                     <input type="number" step="0.0001" id="ocrNav_${index}" value="${item.nav || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-semibold outline-none focus:border-amber-500">
                                 </div>
                                 <div>
@@ -853,32 +950,38 @@
 
             detectedOcrPlans.forEach((_, index) => {
                 const planName = document.getElementById(`ocrPlanName_${index}`).value;
+                let fundId = document.getElementById(`ocrFundId_${index}`).value || getFundIdByPlanName(planName);
                 const nav = parseFloat(document.getElementById(`ocrNav_${index}`).value) || 0;
                 const units = parseFloat(document.getElementById(`ocrUnits_${index}`).value) || 0;
                 const amount = parseFloat(document.getElementById(`ocrAmount_${index}`).value) || (nav * units);
 
                 if (!planName || units === 0) return;
 
-                // เพิ่มธุรกรรมใหม่ลงในประวัติ gpfTransactions
+                // 1. เพิ่มรายการลง gpf_transactions (Append-Only)
                 gpfTransactions.push({
+                    fundId: fundId,
                     date: todayStr,
-                    plan: planName,
                     nav: nav,
                     units: units,
-                    amount: amount,
-                    type: "contribution"
+                    amount: amount
                 });
+
+                // 2. Owner: OCR อัปเดตเฉพาะ units สะสมเข้าพอร์ต
+                const fund = funds.find(f => f.id === fundId || f.code.includes(planName));
+                if (fund) {
+                    fund.units += units;
+                }
 
                 updatedCount++;
             });
 
-            // คำนวณ avgNav และ totalUnits ใหม่อัตโนมัติ
+            // 3. recalculateAvgNavs() คำนวณ avgNav จาก gpf_transactions
             recalculateAvgNavs();
 
             await saveToFirebase();
             renderAll();
             closeOcrModal();
-            alert(`บันทึกประวัติธุรกรรมซื้อเรียบร้อยแล้ว ${updatedCount} รายการ และคำนวณ avgNav ใหม่สำเร็จ!`);
+            alert(`บันทึก gpf_transactions สำเร็จ ${updatedCount} รายการ และคำนวณ avgNav ใหม่เรียบร้อยแล้ว!`);
         }
 
         function openFundModal(id = null) {
