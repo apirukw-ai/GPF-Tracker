@@ -717,7 +717,19 @@ console.log(
         // --------------------------------------------------------
 
         // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
-        const compactText = cleanText.replace(/([ก-๙])\s+(?=[ก-๙])/g, '$1');
+        const compactText = cleanText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
+
+        console.log(
+    compactText.includes("หุ้นไทย")
+);
+
+console.log(
+    compactText.includes("อสังหาริมทรัพย์")
+);
+
+console.log(
+    compactText.includes("ต่างประเทศ")
+);
 
         console.log("COMPACT TEXT =", compactText);
 
