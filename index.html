@@ -838,12 +838,15 @@
             };
         }
 
-        /* ---------------- บันทึกข้อมูลเข้า Firebase (แก้ไขการจับคู่แผนเดิม + ป้องกันค่ากลายเป็น 0) ---------------- */
+        /* ---------------- บันทึกข้อมูลเข้า Firebase (ลบกองทุนที่ OCR สร้างผิด + Match เข้า id เดิม) ---------------- */
         async function applyOcrData() {
             if (detectedOcrPlans.length === 0) {
                 alert("ไม่พบข้อมูลกองทุนสำหรับบันทึก");
                 return;
             }
+
+            // 1. ลบกองทุนขยะที่ OCR เคยสร้างผิด ( id ขึ้นต้นด้วย 'fund_' ) ออกจาก Array funds
+            funds = funds.filter(f => !f.id.startsWith('fund_'));
 
             let updatedCount = 0;
 
@@ -854,42 +857,49 @@
 
                 if (!planName || (costNav === 0 && units === 0)) return;
 
-                // Log ตรวจสอบการ Match แผน
-                console.log("OCR Plan:", planName);
-                console.log("Existing Funds:", funds.map(f => f.code));
+                // Debug Logging
+                console.log("OCR PLAN =", planName);
+                console.log("FUNDS =", funds.map(f => ({ id: f.id, code: f.code })));
 
-                // Match แผนเดิมด้วยคีย์เวิร์ด
+                // 2. จับคู่กับกองทุนเดิมตามเงื่อนไขที่กำหนด
                 const existingFund = funds.find(f => {
-                    const code = f.code || "";
-                    if (code.includes("หุ้นไทย") && planName.includes("หุ้นไทย")) return true;
-                    if ((code.includes("อสังหา") || code.includes("REIT")) && planName.includes("อสังหา")) return true;
-                    if (code.includes("ต่างประเทศ") && planName.includes("ต่างประเทศ")) return true;
-                    if (code.includes("ตราสารหนี้") && planName.includes("ตราสารหนี้")) return true;
-                    return code.includes(planName) || planName.includes(code);
+                    if (planName.includes("หุ้นไทย") && f.code.includes("หุ้นไทย")) return true;
+                    if (planName.includes("อสังหา") && f.code.includes("อสังหา")) return true;
+                    if (planName.includes("ต่างประเทศ") && f.code.includes("ต่างประเทศ")) return true;
+                    if (planName.includes("ตราสารหนี้") && f.code.includes("ตราสารหนี้")) return true;
+                    return false;
                 });
 
+                console.log("MATCH =", existingFund);
+
                 if (existingFund) {
-                    // อัปเดตเฉพาะ NAV ต้นทุนและจำนวนหน่วย โดยไม่แตะ currentNav หรือ prevNav เดิม
+                    // อัปเดตเฉพาะ NAV ต้นทุน และ จำนวนหน่วย ของกองทุนเดิมที่มี id มาตรฐาน (เช่น gpf_thai, gpf_prop)
                     existingFund.avgNav = costNav;
                     existingFund.units = units;
+                    updatedCount++;
                 } else {
-                    // หากเป็นแผนใหม่ ให้ตั้งค่าเริ่มต้น
+                    // หากหาไม่พบจริงๆ (เช่น เพิ่มแผนใหม่ในอนาคต) จึงค่อยกำหนด id ตามมาตรฐาน
+                    let newId = 'gpf_fund_' + Date.now();
+                    if (planName.includes("หุ้นไทย")) newId = 'gpf_thai';
+                    else if (planName.includes("อสังหา")) newId = 'gpf_prop';
+                    else if (planName.includes("ต่างประเทศ")) newId = 'gpf_global';
+
                     funds.push({
-                        id: 'fund_' + Date.now() + '_' + index,
+                        id: newId,
                         code: planName,
                         avgNav: costNav,
                         currentNav: costNav,
                         units: units,
                         targetPct: 0
                     });
+                    updatedCount++;
                 }
-                updatedCount++;
             });
 
             await saveToFirebase();
             renderAll();
             closeOcrModal();
-            alert(`อัปเดตข้อมูลสำเร็จทั้งหมด ${updatedCount} แผนลงในพอร์ตเรียบร้อยแล้ว!`);
+            alert(`อัปเดตข้อมูลสำเร็จทั้งหมด ${updatedCount} แผนเข้าสู่ ID กองทุนเดิมเรียบร้อยแล้ว!`);
         }
 
         async function saveFund() {
