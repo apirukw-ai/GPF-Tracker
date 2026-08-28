@@ -712,6 +712,12 @@ console.log(cleanText.includes("เปลี่ยน"));
         // --- เพิ่มโค้ด Debug บล็อกเปลี่ยนแผนการลงทุน เข้า ตามที่ระบุ ---
         const cleanText = fullText.replace(/\s+/g, ' ');
 
+console.log("CLEAN PDF TEXT =", cleanText);
+
+console.log(cleanText.includes("หุ้นไทย"));
+console.log(cleanText.includes("อสังหาริมทรัพย์"));
+console.log(cleanText.includes("เปลี่ยน"));
+
         const switchInIndex = cleanText.lastIndexOf("เปลี่ยนแผนการลงทุน เข้า");
 
         console.log("SWITCH IN INDEX =", switchInIndex);
