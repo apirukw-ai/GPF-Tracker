@@ -712,18 +712,16 @@ console.log(
         cleanText.indexOf("16 ก ร ก ฎ า ค ม")
     )
 );
-console.log(cleanText.includes("หุ้นไทย"));
-console.log(cleanText.includes("อสังหาริมทรัพย์"));
-console.log(cleanText.includes("เปลี่ยน"));
 
-        const switchInIndex = cleanText.lastIndexOf("เปลี่ยนแผนการลงทุน เข้า");
+const switchInIndex = cleanText.lastIndexOf("เปลี่ยนแผนการลงทุนเข้า");
 
-        if (switchInIndex === -1) {
+if (switchInIndex === -1) {
     throw new Error(
         "ไม่พบข้อความ 'เปลี่ยนแผนการลงทุนเข้า'"
     );
 }
-        console.log("SWITCH IN INDEX =", switchInIndex);
+
+console.log("SWITCH IN INDEX =", switchInIndex);
 
         const switchBlock = cleanText.substring(
             switchInIndex,
