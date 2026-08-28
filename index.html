@@ -95,7 +95,7 @@
                 <button onclick="exportCSV()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30"><i class="fa-solid fa-file-excel"></i> Export CSV</button>
                 <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> JSON</button>
                 <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import</button>
-                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนสลิปอัปเดตต้นทุน</button>
+                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนสลิปอัปเดตหลายแผนพร้อมกัน</button>
                 <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
             </div>
         </header>
@@ -393,8 +393,6 @@
             const fundProfitPcts = [];
 
             funds.forEach(f => {
-                // มูลค่าปัจจุบัน (fVal) = จำนวนหน่วย * NAV ปัจจุบัน (ที่ Auto Scraping ดึงมา)
-                // ต้นทุนสะสม (fCost) = จำนวนหน่วย * NAV ต้นทุน (ที่สแกนได้)
                 const fVal = f.units * f.currentNav;                     
                 const fCost = f.units * f.avgNav;                         
                 const profit = fVal - fCost;                              
@@ -702,7 +700,7 @@
             document.getElementById('fileInput').value = '';
         }
 
-        /* ---------------- OCR Processing Engine (Multi-Plan Splitter) ---------------- */
+        /* ---------------- OCR Processing Engine (Top-to-Bottom Line Parsing) ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -730,63 +728,58 @@
                     await worker.terminate();
 
                     let text = ret.data.text;
-                    console.log("=== OCR Output Text ===\n", text);
+                    console.log("=== OCR Raw Output Text ===\n", text);
                     console.log("OCR VALUES");
                     console.log(text.match(/[\d,]+\.\d+/g));
 
-                    // ตัดแยกส่วนของแต่ละแผนลงทุนด้วยคำว่า "แผน"
-                    const planBlocks = text.split(/(?=แผน)/g);
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    
                     detectedOcrPlans = [];
+                    let currentPlanName = "";
+                    let currentPlanNumbers = [];
 
-                    planBlocks.forEach((block, idx) => {
-                        if (!block.trim() || !block.includes("แผน")) return;
+                    lines.forEach((line) => {
+                        if (line.includes("แผน")) {
+                            if (currentPlanName && currentPlanNumbers.length >= 2) {
+                                detectedOcrPlans.push({
+                                    planName: currentPlanName,
+                                    units: currentPlanNumbers[0],
+                                    nav: currentPlanNumbers[1]
+                                });
+                            }
 
-                        // สกัดชื่อแผน
-                        let planName = "";
-                        if (block.includes("อสังหา")) {
-                            planName = "แผนกองทุนอสังหาริมทรัพย์ไทย";
-                        } else if (block.includes("หุ้นไทย")) {
-                            planName = "แผนหุ้นไทย";
-                        } else if (block.includes("ต่างประเทศ")) {
-                            planName = "แผนหุ้นต่างประเทศ";
-                        } else if (block.includes("ตราสารหนี้")) {
-                            planName = "แผนตราสารหนี้";
+                            if (line.includes("อสังหา")) {
+                                currentPlanName = "แผนกองทุนอสังหาริมทรัพย์ไทย";
+                            } else if (line.includes("หุ้นไทย")) {
+                                currentPlanName = "แผนหุ้นไทย";
+                            } else if (line.includes("ต่างประเทศ")) {
+                                currentPlanName = "แผนหุ้นต่างประเทศ";
+                            } else if (line.includes("ตราสารหนี้")) {
+                                currentPlanName = "แผนตราสารหนี้";
+                            } else {
+                                currentPlanName = line;
+                            }
+                            currentPlanNumbers = [];
                         } else {
-                            const nameMatch = block.match(/แผน[^\n\r]+/);
-                            if (nameMatch) planName = nameMatch[0].trim();
-                        }
-
-                        if (!planName) return;
-
-                        // สกัดค่าตัวเลขทั้งหมดในบล็อกแผนนี้
-                        const values = block.match(/[\d,]+\.\d+/g) || [];
-                        const numbers = values.map(n => parseFloat(n.replace(/,/g, '')));
-
-                        let units = 0;
-                        let nav = 0;
-
-                        // Regex สกัดจาก Keyword
-                        const unitsMatch = block.match(/(?:จำนวนหน่วย|หน่วย)[\s:]*([\d,]+\.\d+)/);
-                        if (unitsMatch) units = parseFloat(unitsMatch[1].replace(/,/g, ''));
-
-                        const navMatch = block.match(/(?:มูลค่าต่อหน่วย|NAV)[\s:]*([\d,]+\.\d+)/);
-                        if (navMatch) nav = parseFloat(navMatch[1].replace(/,/g, ''));
-
-                        // Fallback ตามลำดับ กบข. (บรรทัด 1 = หน่วย, บรรทัด 2 = NAV)
-                        if (units === 0 && numbers.length >= 1) units = numbers[0];
-                        if (nav === 0 && numbers.length >= 2) nav = numbers[1];
-
-                        if (units > 0 || nav > 0) {
-                            detectedOcrPlans.push({
-                                id: idx,
-                                planName: planName,
-                                units: units,
-                                nav: nav
-                            });
+                            const nums = line.match(/[\d,]+\.\d+/g);
+                            if (nums) {
+                                nums.forEach(n => {
+                                    currentPlanNumbers.push(parseFloat(n.replace(/,/g, '')));
+                                });
+                            }
                         }
                     });
 
-                    // สร้าง UI รายการแผนทั้งหมดที่สแกนพบ
+                    if (currentPlanName && currentPlanNumbers.length >= 2) {
+                        detectedOcrPlans.push({
+                            planName: currentPlanName,
+                            units: currentPlanNumbers[0],
+                            nav: currentPlanNumbers[1]
+                        });
+                    }
+
+                    console.log("=== DETECTED PLANS ===", detectedOcrPlans);
+
                     listContainer.innerHTML = '';
                     document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
 
@@ -830,7 +823,7 @@
             };
         }
 
-        /* ---------------- บันทึกทุกแผนลงทุนที่สแกนพบคืนลง Firebase พร้อมกัน ---------------- */
+        /* ---------------- บันทึกทุกแผนลงทุนที่สแกนพบคืนลง Firebase ---------------- */
         async function applyOcrData() {
             if (detectedOcrPlans.length === 0) {
                 alert("ไม่พบข้อมูลกองทุนสำหรับบันทึก");
@@ -846,7 +839,6 @@
 
                 if (!planName || (costNav === 0 && units === 0)) return;
 
-                // ค้นหากองทุนเดิมในพอร์ตเพื่อทำการอัปเดต
                 const existingFund = funds.find(f => f.code.includes(planName) || planName.includes(f.code));
 
                 if (existingFund) {
@@ -860,9 +852,9 @@
                     funds.push({
                         id: 'fund_' + Date.now() + '_' + index,
                         code: planName,
-                        avgNav: costNav,          // NAV ต้นทุน
-                        currentNav: costNav,      // NAV ปัจจุบัน (รอระบบ Auto Scraping อัปเดต)
-                        units: units,             // จำนวนหน่วย
+                        avgNav: costNav,
+                        currentNav: costNav,
+                        units: units,
                         targetPct: 0
                     });
                 }
