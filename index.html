@@ -756,6 +756,10 @@ while ((match = regex.exec(compactText)) !== null) {
 console.log("TARGET =", target.altKey);
 console.log("MATCH =", match);
 console.log("MATCH[0] =", match[0]);
+
+console.log("NAV =", match[1]);
+console.log("UNITS =", match[2]);
+console.log("AMOUNT =", match[3]);
     
     lastCostNav = parseFloat(match[1].replace(/,/g, ''));
     lastUnits = parseFloat(match[2].replace(/,/g, ''));
