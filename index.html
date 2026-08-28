@@ -719,6 +719,19 @@ console.log(
         // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
         const compactText = cleanText.replace(/([ก-๙])\s+(?=[ก-๙])/g, '$1');
 
+        console.log("COMPACT TEXT =", compactText);
+
+console.log(
+    compactText.includes("หุ้นไทย")
+);
+
+console.log(
+    compactText.includes("อสังหาริมทรัพย์")
+);
+
+console.log(
+    compactText.includes("ต่างประเทศ")
+);
         const planTargets = [
             { id: "gpf_thai", key: "แผนหุ้นไทย", altKey: "หุ้นไทย" },
             { id: "gpf_prop", key: "แผนกองทุนอสังหาริมทรัพย์ไทย", altKey: "อสังหาริมทรัพย์" },
@@ -735,22 +748,14 @@ console.log(
             // ค้นหาข้อความใน switchBlock ที่สกัดออกมา
             const regex = new RegExp(target.altKey + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
             let match;
-            let lastCostNav = 0;
-            let lastUnits = 0;
+let lastCostNav = 0;
+let lastUnits = 0;
 
-            while ((match = regex.exec(compactText)) !== null) {
-
-    console.log("TARGET =", target.key);
-
-    console.log("MATCH =", match);
-
+while ((match = regex.exec(compactText)) !== null) {
     lastCostNav = parseFloat(match[1].replace(/,/g, ''));
     lastUnits = parseFloat(match[2].replace(/,/g, ''));
 }
-                lastCostNav = parseFloat(match[1].replace(/,/g, ''));
-                lastUnits = parseFloat(match[2].replace(/,/g, ''));
-            }
-
+                
             if (lastCostNav > 0 && lastUnits > 0) {
                 console.log(`MATCH SUCCESS [${target.key}]: NAV = ${lastCostNav}, Units = ${lastUnits}`);
                 fund.avgNav = lastCostNav; // อัปเดต NAV ต้นทุนถัวเฉลี่ย
