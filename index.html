@@ -699,7 +699,15 @@ async function processPdfStatement(event) {
             fullText += pageText + "\n";
         }
 
-        console.log("=== PDF STATEMENT RAW TEXT ===", fullText);
+        // ... โค้ดส่วนดึง cleanText ก่อนหน้า ...
+
+console.log("CLEAN PDF TEXT =", cleanText);
+
+console.log(cleanText.includes("หุ้นไทย"));
+console.log(cleanText.includes("อสังหาริมทรัพย์"));
+console.log(cleanText.includes("เปลี่ยน"));
+
+// ... โค้ดส่วนถัดไป ...
 
         // --- เพิ่มโค้ด Debug บล็อกเปลี่ยนแผนการลงทุน เข้า ตามที่ระบุ ---
         const cleanText = fullText.replace(/\s+/g, ' ');
