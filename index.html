@@ -682,72 +682,82 @@
             });
         }
 
-        /* ---------------- PDF Statement Processing Engine (ช่องทางหลัก: pdf.js) ---------------- */
-        async function processPdfStatement(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+/* ---------------- PDF Statement Processing Engine (ปรับปรุงการอ่านข้อความภาษาไทย) ---------------- */
+async function processPdfStatement(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                
-                let fullText = "";
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(" ");
-                    fullText += pageText + "\n";
-                }
-
-                console.log("=== PDF STATEMENT RAW TEXT ===", fullText);
-
-                const planTargets = [
-                    { id: "gpf_thai", key: "หุ้นไทย", name: "แผนหุ้นไทย" },
-                    { id: "gpf_prop", key: "อสังหาริมทรัพย์", name: "แผนกองทุนอสังหาริมทรัพย์ไทย" },
-                    { id: "gpf_global", key: "ต่างประเทศ", name: "แผนหุ้นต่างประเทศ" },
-                    { id: "gpf_bond", key: "ตราสารหนี้", name: "แผนตราสารหนี้" }
-                ];
-
-                let updatedCount = 0;
-
-                planTargets.forEach(target => {
-                    const fund = funds.find(f => f.id === target.id || f.code.includes(target.key));
-                    if (!fund) return;
-
-                    // Regex สกัดค่าจาก PDF: มูลค่าต่อหน่วย (NAV) | จำนวนหน่วย | จำนวนเงิน
-                    const regex = new RegExp(target.key + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
-                    let match;
-                    let lastCostNav = 0;
-                    let lastUnits = 0;
-
-                    while ((match = regex.exec(fullText)) !== null) {
-                        lastCostNav = parseFloat(match[1].replace(/,/g, ''));
-                        lastUnits = parseFloat(match[2].replace(/,/g, ''));
-                    }
-
-                    if (lastCostNav > 0 && lastUnits > 0) {
-                        fund.avgNav = lastCostNav; // อัปเดต NAV ต้นทุนถัวเฉลี่ย
-                        fund.units = lastUnits;   // อัปเดตจำนวนหน่วยล่าสุด
-                        updatedCount++;
-                    }
-                });
-
-                if (updatedCount > 0) {
-                    await saveToFirebase();
-                    renderAll();
-                    alert(`นำเข้า PDF Statement สำเร็จ! อัปเดต NAV ต้นทุน (avgNav) และหน่วยเรียบร้อยแล้ว ${updatedCount} แผน`);
-                } else {
-                    alert("ไม่สามารถอ่านข้อมูลแผนลงทุนจากไฟล์ PDF ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Statement จาก กบข. หรือไม่");
-                }
-
-            } catch (err) {
-                console.error("PDF Processing Error:", err);
-                alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF Statement");
-            } finally {
-                event.target.value = '';
-            }
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        let fullText = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(" ");
+            fullText += pageText + "\n";
         }
 
+        console.log("RAW PDF TEXT =", fullText);
+
+        // คลีนข้อความ รวบ Spacing ที่กระจัดกระจาย
+        fullText = fullText.replace(/\s+/g, ' ');
+
+        console.log("CLEAN PDF TEXT =", fullText);
+
+        // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาคำได้แม่นยำ
+        const compactText = fullText.replace(/([ก-๙])\s+(?=[ก-๙])/g, '$1');
+
+        console.log("COMPACT THAI TEXT =", compactText);
+
+        const planTargets = [
+            { id: "gpf_thai", key: "หุ้นไทย", name: "แผนหุ้นไทย" },
+            { id: "gpf_prop", key: "อสังหาริมทรัพย์", name: "แผนกองทุนอสังหาริมทรัพย์ไทย" },
+            { id: "gpf_global", key: "ต่างประเทศ", name: "แผนหุ้นต่างประเทศ" },
+            { id: "gpf_bond", key: "ตราสารหนี้", name: "แผนตราสารหนี้" }
+        ];
+
+        let updatedCount = 0;
+
+        planTargets.forEach(target => {
+            const fund = funds.find(f => f.id === target.id || f.code.includes(target.key));
+            if (!fund) return;
+
+            // Regex ค้นหาบรรทัดที่มีชื่อแผน และดึงมูลค่าต่อหน่วย (NAV) + จำนวนหน่วย ล่าสุด
+            const regex = new RegExp(target.key + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
+            let match;
+            let lastCostNav = 0;
+            let lastUnits = 0;
+
+            while ((match = regex.exec(compactText)) !== null) {
+                lastCostNav = parseFloat(match[1].replace(/,/g, ''));
+                lastUnits = parseFloat(match[2].replace(/,/g, ''));
+            }
+
+            if (lastCostNav > 0 && lastUnits > 0) {
+                console.log(`MATCH SUCCESS [${target.name}]: NAV = ${lastCostNav}, Units = ${lastUnits}`);
+                fund.avgNav = lastCostNav; // อัปเดต NAV ต้นทุนถัวเฉลี่ย
+                fund.units = lastUnits;   // อัปเดตจำนวนหน่วยล่าสุด
+                updatedCount++;
+            }
+        });
+
+        if (updatedCount > 0) {
+            await saveToFirebase();
+            renderAll();
+            alert(`นำเข้า PDF Statement สำเร็จ! อัปเดต NAV ต้นทุน (avgNav) และหน่วยเรียบร้อยแล้ว ${updatedCount} แผน`);
+        } else {
+            alert("ไม่สามารถอ่านข้อมูลแผนลงทุนจากไฟล์ PDF ได้ กรุณาตรวจสอบ Console Log สำหรับข้อมูลเพิ่มเติม");
+        }
+
+    } catch (err) {
+        console.error("PDF Processing Error:", err);
+        alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF Statement");
+    } finally {
+        event.target.value = '';
+    }
+}
         /* ---------------- OCR Processing Engine (ช่องทางสำรอง: ดึงเฉพาะ Units) ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
