@@ -356,23 +356,29 @@
            คำนวณเฉพาะ avgNav จาก gpf_transactions (Single Source of Truth)
            ห้ามแตะ fund.units และ fund.currentNav โดยเด็ดขาด
         ------------------------------------------------------------- */
-        function recalculateAvgNavs() {
-            if (!gpfTransactions || gpfTransactions.length === 0) return;
+/* ---------------- Owner: recalculateAvgNavs() ----------------
+   คำนวณเฉพาะ avgNav จาก gpf_transactions (Single Source of Truth)
+   โดยกรองเฉพาะ type 'INITIAL' (ตั้งต้น) และ 'OCR_BUY' (ซื้อเพิ่ม)
+------------------------------------------------------------- */
+function recalculateAvgNavs() {
+    if (!gpfTransactions || gpfTransactions.length === 0) return;
 
-            funds.forEach(fund => {
-                const planTxns = gpfTransactions.filter(t => t.fundId === fund.id);
+    funds.forEach(fund => {
+        // กรองเอาเฉพาะ Transaction ที่มีผลกับต้นทุน (ไม่เอา PDF_SNAPSHOT มาถัวเฉลี่ย)
+        const planTxns = gpfTransactions.filter(
+            t => t.fundId === fund.id && t.type !== 'PDF_SNAPSHOT'
+        );
 
-                if (planTxns.length > 0) {
-                    const totalCost = planTxns.reduce((sum, t) => sum + (t.amount || (t.units * t.nav)), 0);
-                    const totalUnits = planTxns.reduce((sum, t) => sum + t.units, 0);
+        if (planTxns.length > 0) {
+            const totalCost = planTxns.reduce((sum, t) => sum + (t.amount || (t.units * t.nav)), 0);
+            const totalUnits = planTxns.reduce((sum, t) => sum + t.units, 0);
 
-                    if (totalUnits > 0) {
-                        fund.avgNav = totalCost / totalUnits; // อัปเดตเฉพาะ avgNav
-                    }
-                }
-            });
+            if (totalUnits > 0) {
+                fund.avgNav = totalCost / totalUnits; // ✅ อัปเดตเฉพาะ avgNav ตามกฎ
+            }
         }
-
+    });
+}
         async function loadData() {
             try {
                 const res = await fetch(DB_URL + '?t=' + Date.now());
@@ -749,18 +755,22 @@
                         const pdfNav = parseFloat(match[2].replace(/,/g, ''));
                         const pdfAmount = parseFloat(match[3].replace(/,/g, ''));
 
+// ในฟังก์ชัน processPdfSnapshot()
                         if (pdfUnits > 0) {
                             fund.units = pdfUnits; // ✅ Owner: PDF Snapshot อัปเดต fund.units
                             updatedCount++;
 
+                            // ตรวจสอบ NAV ว่าตรงกับระบบเว็บ กบข. (currentNav) หรือไม่
                             if (pdfNav > 0 && Math.abs(pdfNav - fund.currentNav) > 0.0001) {
-                                navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF (${pdfNav.toFixed(4)}) vs Auto NAV (${fund.currentNav.toFixed(4)})`);
+                                navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF Snapshot NAV (${pdfNav.toFixed(4)}) ไม่ตรงกับ Auto NAV (${fund.currentNav.toFixed(4)})`);
                             }
 
-                            // เพิ่มลง gpf_transactions (Append-Only)
+                            // เพิ่มลง gpf_transactions เพื่อเก็บประวัติ (แต่จะไม่ถูกดึงไปคิด avgNav)
                             gpfTransactions.push({
                                 fundId: fund.id,
                                 date: docDate,
+                                type: 'PDF_SNAPSHOT', // ✅ ระบุชัดเจนว่านี่คือ Snapshot
+                                plan: rule.keywords[0],
                                 nav: pdfNav,
                                 units: pdfUnits,
                                 amount: pdfAmount
@@ -955,12 +965,15 @@ PDF PARSER (EXPERIMENTAL)
                 const units = parseFloat(document.getElementById(`ocrUnits_${index}`).value) || 0;
                 const amount = parseFloat(document.getElementById(`ocrAmount_${index}`).value) || (nav * units);
 
+// ในฟังก์ชัน applyOcrData()
                 if (!planName || units === 0) return;
 
                 // 1. เพิ่มรายการลง gpf_transactions (Append-Only)
                 gpfTransactions.push({
                     fundId: fundId,
                     date: todayStr,
+                    type: 'OCR_BUY', // ✅ ระบุชัดเจนว่ามาจาก OCR (ซื้อเพิ่ม)
+                    plan: planName,
                     nav: nav,
                     units: units,
                     amount: amount
@@ -969,7 +982,7 @@ PDF PARSER (EXPERIMENTAL)
                 // 2. Owner: OCR อัปเดตเฉพาะ units สะสมเข้าพอร์ต
                 const fund = funds.find(f => f.id === fundId || f.code.includes(planName));
                 if (fund) {
-                    fund.units += units;
+                    fund.units += units; // ✅ บวกหน่วยเพิ่ม
                 }
 
                 updatedCount++;
@@ -1033,15 +1046,30 @@ PDF PARSER (EXPERIMENTAL)
                     f.units = units;
                     f.targetPct = targetPct;
                 }
+  // โค้ดเดิม
             } else {
+                const newFundId = 'gpf_fund_' + Date.now();
                 funds.push({
-                    id: 'gpf_fund_' + Date.now(),
+                    id: newFundId,
                     code: code,
                     avgNav: avgNav,
                     currentNav: currentNav,
                     units: units,
                     targetPct: targetPct
                 });
+
+                // ✅ เพิ่มโค้ดส่วนนี้: บันทึก Transaction ตั้งต้นลง History
+                if (units > 0 && avgNav > 0) {
+                    gpfTransactions.push({
+                        fundId: newFundId,
+                        date: new Date().toISOString().slice(0, 10),
+                        type: 'INITIAL', // ประเภท: ยอดยกมา
+                        plan: code,
+                        nav: avgNav,
+                        units: units,
+                        amount: units * avgNav
+                    });
+                }
             }
 
             await saveToFirebase();
