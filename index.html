@@ -700,128 +700,131 @@
             document.getElementById('fileInput').value = '';
         }
 
-        /* ---------------- OCR Processing Engine (Top-to-Bottom Line Parsing) ---------------- */
-        async function processOcrImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+/* ---------------- OCR Processing Engine (แก้ไขให้ดึงครบทุกแผน) ---------------- */
+async function processOcrImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-            const statusContainer = document.getElementById('ocrStatusContainer');
-            const statusText = document.getElementById('ocrStatusText');
-            const previewImg = document.getElementById('ocrPreviewImg');
-            const spinner = document.getElementById('ocrSpinner');
-            const resultForm = document.getElementById('ocrResultForm');
-            const listContainer = document.getElementById('ocrPlanListContainer');
+    const statusContainer = document.getElementById('ocrStatusContainer');
+    const statusText = document.getElementById('ocrStatusText');
+    const previewImg = document.getElementById('ocrPreviewImg');
+    const spinner = document.getElementById('ocrSpinner');
+    const resultForm = document.getElementById('ocrResultForm');
+    const listContainer = document.getElementById('ocrPlanListContainer');
 
-            statusContainer.classList.remove('hidden');
-            resultForm.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
+    statusContainer.classList.remove('hidden');
+    resultForm.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
 
-            const objectUrl = URL.createObjectURL(file);
-            previewImg.src = objectUrl;
-            previewImg.classList.remove('hidden');
+    const objectUrl = URL.createObjectURL(file);
+    previewImg.src = objectUrl;
+    previewImg.classList.remove('hidden');
 
-            previewImg.onload = async () => {
-                try {
-                    const worker = await Tesseract.createWorker('tha+eng');
-                    const ret = await worker.recognize(file);
-                    await worker.terminate();
+    previewImg.onload = async () => {
+        try {
+            const worker = await Tesseract.createWorker('tha+eng');
+            const ret = await worker.recognize(file);
+            await worker.terminate();
 
-                    let text = ret.data.text;
-                    console.log("=== OCR Raw Output Text ===\n", text);
-                    console.log("OCR VALUES");
-                    console.log(text.match(/[\d,]+\.\d+/g));
+            let text = ret.data.text;
+            console.log("=== OCR Raw Output Text ===\n", text);
 
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    
-                    detectedOcrPlans = [];
-                    let currentPlanName = "";
-                    let currentPlanNumbers = [];
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            detectedOcrPlans = [];
+            let currentPlan = null;
 
-                    lines.forEach((line) => {
-                        if (line.includes("แผน")) {
-                            if (currentPlanName && currentPlanNumbers.length >= 2) {
-                                detectedOcrPlans.push({
-                                    planName: currentPlanName,
-                                    units: currentPlanNumbers[0],
-                                    nav: currentPlanNumbers[1]
-                                });
-                            }
-
-                            if (line.includes("อสังหา")) {
-                                currentPlanName = "แผนกองทุนอสังหาริมทรัพย์ไทย";
-                            } else if (line.includes("หุ้นไทย")) {
-                                currentPlanName = "แผนหุ้นไทย";
-                            } else if (line.includes("ต่างประเทศ")) {
-                                currentPlanName = "แผนหุ้นต่างประเทศ";
-                            } else if (line.includes("ตราสารหนี้")) {
-                                currentPlanName = "แผนตราสารหนี้";
-                            } else {
-                                currentPlanName = line;
-                            }
-                            currentPlanNumbers = [];
-                        } else {
-                            const nums = line.match(/[\d,]+\.\d+/g);
-                            if (nums) {
-                                nums.forEach(n => {
-                                    currentPlanNumbers.push(parseFloat(n.replace(/,/g, '')));
-                                });
-                            }
-                        }
-                    });
-
-                    if (currentPlanName && currentPlanNumbers.length >= 2) {
+            lines.forEach((line) => {
+                // ตรวจจับบรรทัดชื่อแผน
+                if (line.includes("แผน")) {
+                    // ถ้ามีแผนเดิมค้างอยู่ ให้บันทึกเก็บเข้า Array ก่อนเริ่มแผนใหม่
+                    if (currentPlan && currentPlan.numbers.length >= 2) {
                         detectedOcrPlans.push({
-                            planName: currentPlanName,
-                            units: currentPlanNumbers[0],
-                            nav: currentPlanNumbers[1]
+                            planName: currentPlan.name,
+                            units: currentPlan.numbers[0],
+                            nav: currentPlan.numbers[1]
                         });
                     }
 
-                    console.log("=== DETECTED PLANS ===", detectedOcrPlans);
-
-                    listContainer.innerHTML = '';
-                    document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
-
-                    if (detectedOcrPlans.length === 0) {
-                        statusText.innerText = "ไม่พบข้อมูลกองทุนในภาพ กรุณาถ่ายสลิปให้ชัดเจน";
-                        spinner.classList.add('hidden');
-                        return;
+                    // ระบุชื่อแผนใหม่
+                    let name = line;
+                    if (line.includes("อสังหา")) {
+                        name = "แผนกองทุนอสังหาริมทรัพย์ไทย";
+                    } else if (line.includes("หุ้นไทย")) {
+                        name = "แผนหุ้นไทย";
+                    } else if (line.includes("ต่างประเทศ")) {
+                        name = "แผนหุ้นต่างประเทศ";
+                    } else if (line.includes("ตราสารหนี้")) {
+                        name = "แผนตราสารหนี้";
                     }
 
-                    detectedOcrPlans.forEach((item, index) => {
-                        const div = document.createElement('div');
-                        div.className = "bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-2";
-                        div.innerHTML = `
-                            <div class="flex justify-between items-center border-b border-slate-700/80 pb-1">
-                                <span class="font-bold text-amber-400 text-xs">#${index + 1} ${item.planName}</span>
-                                <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                    <label class="text-gray-400 text-[11px]">จำนวนหน่วย (Units):</label>
-                                    <input type="number" step="0.0001" id="ocrUnits_${index}" value="${item.units || ''}" class="w-full bg-slate-900 border border-emerald-500/40 rounded p-1 text-white font-bold mt-0.5 outline-none focus:border-emerald-500">
-                                </div>
-                                <div>
-                                    <label class="text-gray-400 text-[11px]">NAV ต้นทุน (avgNav):</label>
-                                    <input type="number" step="0.0001" id="ocrNav_${index}" value="${item.nav || ''}" class="w-full bg-slate-900 border border-amber-500/40 rounded p-1 text-gold font-bold mt-0.5 outline-none focus:border-amber-500">
-                                </div>
-                            </div>
-                        `;
-                        listContainer.appendChild(div);
-                    });
-
-                    statusText.innerText = `สแกนสำเร็จ พบทั้งหมด ${detectedOcrPlans.length} แผนลงทุน`;
-                    spinner.classList.add('hidden');
-                    resultForm.classList.remove('hidden');
-
-                } catch (err) {
-                    console.error("OCR Error:", err);
-                    statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
-                    spinner.classList.add('hidden');
+                    currentPlan = { name: name, numbers: [] };
+                } else if (currentPlan) {
+                    // ดึงตัวเลขทศนิยมทั้งหมดในบรรทัดของแผนปัจจุบัน
+                    const nums = line.match(/[\d,]+\.\d+/g);
+                    if (nums) {
+                        nums.forEach(n => {
+                            currentPlan.numbers.push(parseFloat(n.replace(/,/g, '')));
+                        });
+                    }
                 }
-            };
+            });
+
+            // บันทึกแผนสุดท้ายที่อยู่ในลูป
+            if (currentPlan && currentPlan.numbers.length >= 2) {
+                detectedOcrPlans.push({
+                    planName: currentPlan.name,
+                    units: currentPlan.numbers[0],
+                    nav: currentPlan.numbers[1]
+                });
+            }
+
+            console.log("=== DETECTED PLANS FINAL ===", detectedOcrPlans);
+
+            // แสดงผลรายการแผนทั้งหมดที่สแกนพบลง UI Modal
+            listContainer.innerHTML = '';
+            document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
+
+            if (detectedOcrPlans.length === 0) {
+                statusText.innerText = "ไม่พบข้อมูลกองทุนในภาพ กรุณาถ่ายสลิปให้ชัดเจน";
+                spinner.classList.add('hidden');
+                return;
+            }
+
+            detectedOcrPlans.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-2";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-700/80 pb-1">
+                        <span class="font-bold text-amber-400 text-xs">#${index + 1} ${item.planName}</span>
+                        <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <label class="text-gray-400 text-[11px]">จำนวนหน่วย (Units):</label>
+                            <input type="number" step="0.0001" id="ocrUnits_${index}" value="${item.units || ''}" class="w-full bg-slate-900 border border-emerald-500/40 rounded p-1 text-white font-bold mt-0.5 outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-gray-400 text-[11px]">NAV ต้นทุน (avgNav):</label>
+                            <input type="number" step="0.0001" id="ocrNav_${index}" value="${item.nav || ''}" class="w-full bg-slate-900 border border-amber-500/40 rounded p-1 text-gold font-bold mt-0.5 outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+
+            statusText.innerText = `สแกนสำเร็จ พบทั้งหมด ${detectedOcrPlans.length} แผนลงทุน`;
+            spinner.classList.add('hidden');
+            resultForm.classList.remove('hidden');
+
+        } catch (err) {
+            console.error("OCR Error:", err);
+            statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
+            spinner.classList.add('hidden');
         }
+    };
+}
 
         /* ---------------- บันทึกทุกแผนลงทุนที่สแกนพบคืนลง Firebase ---------------- */
         async function applyOcrData() {
