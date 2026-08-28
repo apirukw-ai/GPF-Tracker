@@ -103,7 +103,7 @@
                 <button onclick="exportCSV()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30"><i class="fa-solid fa-file-excel"></i> Export CSV</button>
                 <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> JSON</button>
                 <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import</button>
-                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนรูปภาพ/สลิป</button>
+                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนสลิปอัปเดตต้นทุน</button>
                 <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
             </div>
         </header>
@@ -245,9 +245,9 @@
                 <thead>
                     <tr>
                         <th>ชื่อแผนลงทุน</th>
-                        <th class="text-right">NAV ต้นทุน</th>
-                        <th class="text-right">NAV ปัจจุบัน</th>
-                        <th class="text-right">จำนวนหน่วย</th>
+                        <th class="text-right">NAV ต้นทุน (สแกน)</th>
+                        <th class="text-right">NAV ปัจจุบัน (Auto)</th>
+                        <th class="text-right">จำนวนหน่วย (สแกน)</th>
                         <th class="text-right">มูลค่าปัจจุบัน</th>
                         <th class="text-right">กำไรทุนสะสม</th>
                         <th class="text-right">กำไรวันนี้</th>
@@ -302,13 +302,13 @@
     <div id="ocrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
         <div class="card-gold p-6 w-full max-w-lg text-center max-h-[90vh] overflow-y-auto">
             <h3 class="text-base font-bold text-white mb-3 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-camera text-gold"></i> สแกนรูปภาพ/ใบแจ้งยอด กบข.
+                <i class="fa-solid fa-camera text-gold"></i> สแกนสลิปอัปเดต NAV ต้นทุน & จำนวนหน่วย
             </h3>
             
             <div class="border-2 border-dashed border-slate-700 p-5 rounded-xl mb-3 hover:border-amber-500 cursor-pointer bg-slate-900/50 transition-all" onclick="document.getElementById('fileInput').click()">
                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-gold mb-2"></i>
                 <p class="text-xs font-semibold text-white">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
-                <p class="text-[10px] text-gray-400 mt-1">รองรับไฟล์รูปสลิป หรือหน้าจอแอป กบข.</p>
+                <p class="text-[10px] text-gray-400 mt-1">สแกนข้อมูล "จำนวนหน่วย" และ "มูลค่าต่อหน่วย (ต้นทุน)"</p>
                 <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processOcrImage(event)">
             </div>
 
@@ -323,26 +323,27 @@
 
             <!-- OCR Form Result Preview -->
             <div id="ocrResultForm" class="hidden text-left space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs mb-3">
-                <p class="text-gold font-bold text-xs border-b border-slate-800 pb-1 mb-2">ข้อมูลที่สแกนพบ (ตรวจสอบ/แก้ไขก่อนบันทึก):</p>
+                <p class="text-gold font-bold text-xs border-b border-slate-800 pb-1 mb-2">ข้อมูลที่สแกนพบ (ตรวจสอบ/แก้ไขก่อนอัปเดตเข้าพอร์ต):</p>
                 <div>
                     <label class="text-gray-400">ชื่อแผนลงทุน:</label>
                     <input type="text" id="ocrPlanName" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
                 </div>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="text-gray-400">จำนวนหน่วย:</label>
-                        <input type="number" step="0.0001" id="ocrUnits" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
+                        <label class="text-gray-400 font-semibold text-emerald-400">จำนวนหน่วย (Units):</label>
+                        <input type="number" step="0.0001" id="ocrUnits" class="w-full bg-slate-800 border border-emerald-500/50 rounded p-1.5 text-white mt-0.5 outline-none focus:border-emerald-500 font-bold">
                     </div>
                     <div>
-                        <label class="text-gray-400">มูลค่าต่อหน่วย:</label>
-                        <input type="number" step="0.0001" id="ocrNav" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
-                    </div>
-                    <div>
-                        <label class="text-gray-400">รวมเงิน (บาท):</label>
-                        <input type="number" step="0.01" id="ocrTotalVal" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
+                        <label class="text-gray-400 font-semibold text-amber-400">NAV ต้นทุน (Cost NAV):</label>
+                        <input type="number" step="0.0001" id="ocrNav" class="w-full bg-slate-800 border border-amber-500/50 rounded p-1.5 text-gold mt-0.5 outline-none focus:border-amber-500 font-bold">
                     </div>
                 </div>
-                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2 rounded text-xs mt-3"><i class="fa-solid fa-check mr-1"></i> ยืนยันเพิ่ม/อัปเดตเข้าพอร์ต</button>
+                <div>
+                    <label class="text-gray-400">รวมเงิน (บาท):</label>
+                    <input type="number" step="0.01" id="ocrTotalVal" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
+                </div>
+                <p class="text-[10px] text-gray-400 italic mt-1">* หมายเหตุ: NAV ปัจจุบันจะถูกอัปเดตแยกต่างหากจากระบบ Auto-Web Scraping</p>
+                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2 rounded text-xs mt-3"><i class="fa-solid fa-check mr-1"></i> ยืนยันอัปเดต NAV ต้นทุน & จำนวนหน่วย</button>
             </div>
 
             <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-1.5 rounded text-xs w-full">ปิดหน้าต่าง</button>
@@ -717,7 +718,7 @@
             document.getElementById('fileInput').value = '';
         }
 
-        /* ---------------- OCR Processing Engine ---------------- */
+        /* ---------------- OCR Processing Engine (ส่วนสแกนอัปเดต NAV ต้นทุน & จำนวนหน่วย) ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -731,7 +732,7 @@
             statusContainer.classList.remove('hidden');
             resultForm.classList.add('hidden');
             spinner.classList.remove('hidden');
-            statusText.innerText = "กำลังอ่านข้อมูลจากรูปภาพ (OCR)...";
+            statusText.innerText = "กำลังสแกนรูปภาพสลิป (OCR)...";
 
             previewImg.src = URL.createObjectURL(file);
             previewImg.classList.remove('hidden');
@@ -755,14 +756,14 @@
                     detectedPlan = "แผนหุ้นต่างประเทศ";
                 }
 
-                // 2. ค้นหา "จำนวนหน่วย"
+                // 2. ค้นหา "จำนวนหน่วย" (Units)
                 let unitsFound = 0;
                 const unitsMatch = text.match(/จำนวนหน่วย[\s:]*([\d,]+\.\d+)/);
                 if (unitsMatch) {
                     unitsFound = parseFloat(unitsMatch[1].replace(/,/g, ''));
                 }
 
-                // 3. ค้นหา "มูลค่าต่อหน่วย"
+                // 3. ค้นหา "มูลค่าต่อหน่วย" -> นำมาตั้งเป็น NAV ต้นทุน (avgNav)
                 let navFound = 0;
                 const navMatch = text.match(/มูลค่าต่อหน่วย[\s:]*([\d,]+\.\d+)/);
                 if (navMatch) {
@@ -778,7 +779,12 @@
                     totalFound = unitsFound * navFound;
                 }
 
-                // นำค่าไปแสดงบนฟอร์ม
+                // คำนวณ NAV ต้นทุนหากยังไม่พบแต่รวมเงินและหน่วยมีค่า
+                if (navFound === 0 && totalFound > 0 && unitsFound > 0) {
+                    navFound = totalFound / unitsFound;
+                }
+
+                // แสดงผลบนฟอร์มสแกน
                 document.getElementById('ocrPlanName').value = detectedPlan;
                 document.getElementById('ocrUnits').value = unitsFound > 0 ? unitsFound : '';
                 document.getElementById('ocrNav').value = navFound > 0 ? navFound : '';
@@ -795,28 +801,36 @@
             }
         }
 
+        /* ---------------- บันทึกเฉพาะ NAV ต้นทุน และ จำนวนหน่วย เข้า Firebase ---------------- */
         async function applyOcrData() {
             const planName = document.getElementById('ocrPlanName').value;
-            const nav = parseFloat(document.getElementById('ocrNav').value) || 0;
+            const costNav = parseFloat(document.getElementById('ocrNav').value) || 0;
             const units = parseFloat(document.getElementById('ocrUnits').value) || 0;
 
-            if (!planName || nav === 0 || units === 0) {
+            if (!planName || (costNav === 0 && units === 0)) {
                 alert("กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก");
                 return;
             }
 
-            const existingIndex = funds.findIndex(f => f.code.includes(planName) || planName.includes(f.code));
+            const existingFund = funds.find(f => f.code.includes(planName) || planName.includes(f.code));
 
-            if (existingIndex >= 0) {
-                funds[existingIndex].currentNav = nav;
-                funds[existingIndex].units = units;
+            if (existingFund) {
+                // อัปเดตเฉพาะ NAV ต้นทุน (avgNav) และ จำนวนหน่วย (units)
+                existingFund.avgNav = costNav;
+                existingFund.units = units;
+
+                // หากยังไม่มี currentNav ให้ตั้งค่าตั้งต้นไว้ก่อน
+                if (!existingFund.currentNav) {
+                    existingFund.currentNav = costNav;
+                }
             } else {
+                // ถ้าเป็นแผนใหม่ เพิ่มเข้าพอร์ต
                 funds.push({
                     id: 'fund_' + Date.now(),
                     code: planName,
-                    avgNav: nav,
-                    currentNav: nav,
-                    units: units,
+                    avgNav: costNav,          // NAV ต้นทุน
+                    currentNav: costNav,      // NAV ปัจจุบัน (รอระบบ Auto-Web Scraping อัปเดต)
+                    units: units,             // จำนวนหน่วย
                     targetPct: 0
                 });
             }
@@ -824,7 +838,7 @@
             await saveToFirebase();
             renderAll();
             closeOcrModal();
-            alert("อัปเดตข้อมูลจากการสแกนเรียบร้อยแล้ว!");
+            alert(`อัปเดตข้อมูลแผน "${planName}" เข้าพอร์ตเรียบร้อยแล้ว!\n• NAV ต้นทุน: ฿${costNav.toFixed(4)}\n• จำนวนหน่วย: ${units.toLocaleString()}`);
         }
 
         async function saveFund() {
