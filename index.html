@@ -717,20 +717,20 @@ console.log(
         // --------------------------------------------------------
 
         // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
-        const compactText = cleanText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
+        let compactText = cleanText;
+
+for (let i = 0; i < 20; i++) {
+    compactText = compactText.replace(
+        /([ก-๙])\s+([ก-๙])/g,
+        '$1$2'
+    );
+}
 
         console.log(
     compactText.includes("หุ้นไทย")
 );
 
-console.log(
-    compactText.includes("อสังหาริมทรัพย์")
-);
-
-console.log(
-    compactText.includes("ต่างประเทศ")
-);
-
+        
         console.log("COMPACT TEXT =", compactText);
 
 console.log(
@@ -765,13 +765,6 @@ let lastUnits = 0;
 
 while ((match = regex.exec(compactText)) !== null) {
 
-console.log("TARGET =", target.altKey);
-console.log("MATCH =", match);
-console.log("MATCH[0] =", match[0]);
-
-console.log("NAV =", match[1]);
-console.log("UNITS =", match[2]);
-console.log("AMOUNT =", match[3]);
     
     lastCostNav = parseFloat(match[1].replace(/,/g, ''));
     lastUnits = parseFloat(match[2].replace(/,/g, ''));
