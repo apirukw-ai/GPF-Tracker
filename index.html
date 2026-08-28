@@ -706,7 +706,12 @@ async function processPdfStatement(event) {
         const cleanText = fullText.replace(/\s+/g, ' ');
 
 console.log("CLEAN PDF TEXT =", cleanText);
-
+console.log(
+    cleanText.substring(
+        cleanText.indexOf("13 ก ร ก ฎ า ค ม"),
+        cleanText.indexOf("16 ก ร ก ฎ า ค ม")
+    )
+);
 console.log(cleanText.includes("หุ้นไทย"));
 console.log(cleanText.includes("อสังหาริมทรัพย์"));
 console.log(cleanText.includes("เปลี่ยน"));
