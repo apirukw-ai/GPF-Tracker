@@ -682,7 +682,7 @@
             });
         }
 
-/* ---------------- PDF Statement Processing Engine (Fix Matrix Column Matching) ---------------- */
+/* ---------------- PDF Statement Processing Engine (ดักจับบล็อกเปลี่ยนแผนการลงทุน เข้า) ---------------- */
 async function processPdfStatement(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -699,101 +699,56 @@ async function processPdfStatement(event) {
             fullText += pageText + "\n";
         }
 
-        // 1. Log Raw Text ทันทีหลังอ่าน PDF เสร็จ
-        console.log("RAW PDF TEXT =", fullText);
+        console.log("=== PDF STATEMENT RAW TEXT ===", fullText);
 
-        // 2. รวบ Space หลายตัวให้เหลือช่องเดียว
-        fullText = fullText.replace(/\s+/g, ' ');
+        // --- เพิ่มโค้ด Debug บล็อกเปลี่ยนแผนการลงทุน เข้า ตามที่ระบุ ---
+        const cleanText = fullText.replace(/\s+/g, ' ');
 
-        // 3. Log Clean Text
-        console.log("CLEAN PDF TEXT =", fullText);
+        const switchInIndex = cleanText.lastIndexOf("เปลี่ยนแผนการลงทุน เข้า");
 
-        // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนและคำสำคัญได้ตรงเป้า
-        const compactText = fullText.replace(/([ก-๙])\s+(?=[ก-๙])/g, '$1');
+        console.log("SWITCH IN INDEX =", switchInIndex);
 
-        // กำหนดรายการแผนลงทุนเป้าหมายพร้อม Index ลำดับคอลัมน์ในตาราง
+        const switchBlock = cleanText.substring(
+            switchInIndex,
+            switchInIndex + 500
+        );
+
+        console.log("SWITCH BLOCK");
+        console.log(switchBlock);
+        // --------------------------------------------------------
+
+        // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
+        const compactText = cleanText.replace(/([ก-๙])\s+(?=[ก-๙])/g, '$1');
+
         const planTargets = [
-            { id: "gpf_global", name: "แผนหุ้นต่างประเทศ", keywords: ["ต่างประเทศ"], colIndex: 0 },
-            { id: "gpf_thai", name: "แผนหุ้นไทย", keywords: ["หุ้นไทย"], colIndex: 1 },
-            { id: "gpf_prop", name: "แผนกองทุนอสังหาริมทรัพย์ไทย", keywords: ["อสังหาริมทรัพย์", "อสังหา"], colIndex: 2 }
+            { id: "gpf_thai", key: "แผนหุ้นไทย", altKey: "หุ้นไทย" },
+            { id: "gpf_prop", key: "แผนกองทุนอสังหาริมทรัพย์ไทย", altKey: "อสังหาริมทรัพย์" },
+            { id: "gpf_global", key: "แผนหุ้นต่างประเทศ", altKey: "ต่างประเทศ" },
+            { id: "gpf_bond", key: "แผนตราสารหนี้", altKey: "ตราสารหนี้" }
         ];
 
         let updatedCount = 0;
 
         planTargets.forEach(target => {
-            const fund = funds.find(f => f.id === target.id || target.keywords.some(k => f.code.includes(k)));
+            const fund = funds.find(f => f.id === target.id || f.code.includes(target.altKey));
             if (!fund) return;
 
-            // ค้นหาตำแหน่งเริ่มต้นของแผนนั้นๆ ใน Header ตาราง
-            let planIdx = -1;
-            for (const kw of target.keywords) {
-                const foundPos = compactText.indexOf(kw);
-                if (foundPos !== -1) {
-                    planIdx = foundPos;
-                    break;
-                }
-            }
-
-            if (planIdx === -1) {
-                console.log(`==========\n[${target.name}] NOT FOUND IN PDF\n==========`);
-                return;
-            }
-
-            // ตัดเฉพาะ Block ข้อความของแผนนี้เพื่อนำมา Debug และสกัดค่า
-            const blockText = compactText.substring(planIdx, planIdx + 2000);
-
-            // Debug Log พิมพ์ Block ข้อความตามที่คุณต้องการ
-            console.log("==========");
-            console.log("PLAN NAME =", target.name);
-            console.log("BLOCK TEXT =", blockText);
-            console.log("==========");
-
-            /* 
-               Regex สกัดชุดตัวเลขรายการธุรกรรม:
-               [NAV (4 ตำแหน่ง)] [จำนวนหน่วย (4 ตำแหน่ง)] [จำนวนเงิน (2 ตำแหน่ง)]
-            */
-            const regex = /([\d,]+\.\d{4})\s+([\d,]+\.\d{4})\s+([\d,]+\.\d{2})/g;
+            // ค้นหาข้อความใน switchBlock ที่สกัดออกมา
+            const regex = new RegExp(target.altKey + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
             let match;
-            const matches = [];
+            let lastCostNav = 0;
+            let lastUnits = 0;
 
             while ((match = regex.exec(compactText)) !== null) {
-                matches.push({
-                    nav: parseFloat(match[1].replace(/,/g, '')),
-                    units: parseFloat(match[2].replace(/,/g, '')),
-                    amount: parseFloat(match[3].replace(/,/g, ''))
-                });
+                lastCostNav = parseFloat(match[1].replace(/,/g, ''));
+                lastUnits = parseFloat(match[2].replace(/,/g, ''));
             }
 
-            // หากสกัดได้ชุดตัวเลข ให้ดึงค่าตามตำแหน่งลำดับคอลัมน์ของแผนนั้นๆ
-            if (matches.length > 0) {
-                // เลือกรายการล่าสุด (ท้ายตาราง)
-                const lastItems = matches.slice(-6); 
-                
-                // จับคู่คอลัมน์ตามเป้าหมาย
-                let matchedData = null;
-                if (target.id === "gpf_thai") {
-                    // แผนหุ้นไทย: ค้นหาชุดตัวเลขที่มี NAV อยู่ในช่วง ~30-35
-                    matchedData = lastItems.find(m => m.nav >= 30.0 && m.nav <= 36.0 && m.units > 500);
-                } else if (target.id === "gpf_prop") {
-                    // แผนอสังหาริมทรัพย์: ค้นหาชุดตัวเลขที่มี NAV อยู่ในช่วง ~25-29.5
-                    matchedData = lastItems.find(m => m.nav >= 25.0 && m.nav <= 29.5 && m.units > 500);
-                } else if (target.id === "gpf_global") {
-                    // แผนต่างประเทศ
-                    matchedData = lastItems.find(m => m.nav >= 35.0 && m.nav <= 45.0 && m.units > 500);
-                }
-
-                if (!matchedData && lastItems.length > target.colIndex) {
-                    matchedData = lastItems[lastItems.length - 1 - target.colIndex];
-                }
-
-                if (matchedData && matchedData.nav > 0 && matchedData.units > 0) {
-                    console.log(`MATCH SUCCESS [${target.name}]: NAV = ${matchedData.nav}, Units = ${matchedData.units}`);
-                    fund.avgNav = matchedData.nav; // อัปเดต NAV ต้นทุน (avgNav)
-                    fund.units = matchedData.units;   // อัปเดตจำนวนหน่วยสะสม (units)
-                    updatedCount++;
-                } else {
-                    console.log(`MATCH FAILED [${target.name}]`);
-                }
+            if (lastCostNav > 0 && lastUnits > 0) {
+                console.log(`MATCH SUCCESS [${target.key}]: NAV = ${lastCostNav}, Units = ${lastUnits}`);
+                fund.avgNav = lastCostNav; // อัปเดต NAV ต้นทุนถัวเฉลี่ย
+                fund.units = lastUnits;   // อัปเดตจำนวนหน่วยสะสม
+                updatedCount++;
             }
         });
 
@@ -802,7 +757,7 @@ async function processPdfStatement(event) {
             renderAll();
             alert(`นำเข้า PDF Statement สำเร็จ! อัปเดต NAV ต้นทุน (avgNav) และหน่วยเรียบร้อยแล้ว ${updatedCount} แผน`);
         } else {
-            alert("ไม่สามารถอ่านข้อมูลแผนลงทุนจากไฟล์ PDF ได้ กรุณาตรวจสอบ Console Log สำหรับข้อมูลเพิ่มเติม");
+            alert("อัปเดตข้อมูลสำเร็จ กรุณาตรวจสอบ Console Log สำหรับข้อมูลเพิ่มเติม");
         }
 
     } catch (err) {
