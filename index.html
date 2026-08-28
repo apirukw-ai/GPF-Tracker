@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPF Portfolio Tracker - ระบบบันทึกพอร์ต กบข.</title>
     
-    <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,9 +15,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Chart.js & Datalabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
         :root {
@@ -75,7 +75,6 @@
 
     <div class="max-w-7xl mx-auto space-y-4">
 
-        <!-- Header Section -->
         <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#111726] p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
@@ -87,7 +86,6 @@
                 </div>
             </div>
 
-            <!-- Sync Status Center -->
             <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 text-xs flex items-center gap-2">
                 <span class="text-gray-400"><i class="fa-solid fa-wifi text-gold"></i> ID: <strong id="syncIdDisplay" class="text-gold">my-gpf-4750131</strong></span>
                 <span class="text-green flex items-center gap-1 font-medium">
@@ -95,7 +93,6 @@
                 </span>
             </div>
 
-            <!-- Action Buttons Right -->
             <div class="flex flex-wrap gap-2">
                 <button onclick="exportCSV()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30"><i class="fa-solid fa-file-excel"></i> Export CSV</button>
                 <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> JSON</button>
@@ -105,7 +102,6 @@
             </div>
         </header>
 
-        <!-- Real-time Market Movement (TradingView Live Ticker Tape Widget) -->
         <div class="card-gold p-3">
             <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-2">
@@ -116,7 +112,6 @@
                 </span>
             </div>
 
-            <!-- TradingView Ticker Tape Widget (รองรับการปัดซ้าย-ขวาบนมือถือ และวิ่งอัตโนมัติ) -->
             <div class="tradingview-widget-container rounded-lg overflow-x-auto">
                 <div class="tradingview-widget-container__widget"></div>
                 <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
@@ -137,7 +132,6 @@
             </div>
         </div>
 
-        <!-- Top Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div class="card-subtle p-3.5">
                 <p class="text-xs text-gray-400 font-medium mb-1">มูลค่าพอร์ต</p>
@@ -161,10 +155,7 @@
             </div>
         </div>
 
-        <!-- Charts Grid: Line Chart (History Trend) & Bar Chart (Performance) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            
-            <!-- Line Chart: Portfolio Growth Trend -->
             <div class="card-subtle p-4 flex flex-col justify-between">
                 <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
                     <i class="fa-solid fa-chart-line"></i> แนวโน้มมูลค่าพอร์ตย้อนหลัง (PORTFOLIO VALUE TREND)
@@ -174,7 +165,6 @@
                 </div>
             </div>
 
-            <!-- Bar Chart: Performance Comparison -->
             <div class="card-subtle p-4 flex flex-col justify-between">
                 <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
                     <i class="fa-solid fa-chart-column"></i> เปรียบเทียบกำไรสะสมแต่ละแผนลงทุน (%)
@@ -183,13 +173,9 @@
                     <canvas id="profitBarChart"></canvas>
                 </div>
             </div>
-
         </div>
 
-        <!-- 2-Column Grid: History Log Table & Target Allocation -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            
-            <!-- Portfolio History Log Table -->
             <div class="card-subtle p-4 overflow-x-auto flex flex-col justify-between">
                 <div>
                     <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
@@ -211,7 +197,6 @@
                 <p class="text-[10px] text-gray-500 mt-2 text-right">* บันทึกอัตโนมัติเมื่อระบบดึงค่า NAV ประจำวัน</p>
             </div>
 
-            <!-- Target Allocation Table with Progress Bar & Rebalance Alert -->
             <div class="card-subtle p-4 overflow-x-auto">
                 <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
                     <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย & สถานะ REBALANCE
@@ -229,17 +214,14 @@
                     <tbody id="allocTableBody" class="text-xs"></tbody>
                 </table>
             </div>
-
         </div>
 
-        <!-- Main Funds Table -->
         <div class="card-subtle p-3.5 overflow-x-auto">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <h3 class="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider">
                     <i class="fa-solid fa-list-ul text-gold"></i> รายการแผนลงทุนในพอร์ต
                 </h3>
 
-                <!-- Last Updated Timestamp Badge -->
                 <div class="bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2 shadow-sm w-fit">
                     <i class="fa-regular fa-clock text-amber-400"></i>
                     <span class="text-gray-300 font-medium">อัปเดต NAV ล่าสุด:</span>
@@ -269,7 +251,6 @@
 
     </div>
 
-    <!-- Fund Modal -->
     <div id="fundModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
         <div class="card-gold p-5 w-full max-w-md">
             <h3 id="modalTitle" class="text-base font-bold text-white mb-3">เพิ่ม/แก้ไขแผนลงทุน</h3>
@@ -305,16 +286,46 @@
         </div>
     </div>
 
-    <!-- OCR Modal -->
     <div id="ocrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
-        <div class="card-gold p-6 w-full max-w-md text-center">
-            <h3 class="text-base font-bold text-white mb-3 flex items-center justify-center gap-2"><i class="fa-solid fa-camera text-gold"></i> สแกนรูปภาพ/ใบแจ้งยอด กบข.</h3>
-            <div class="border-2 border-dashed border-slate-700 p-6 rounded-xl mb-4 hover:border-amber-500 cursor-pointer bg-slate-900/50" onclick="document.getElementById('fileInput').click()">
+        <div class="card-gold p-6 w-full max-w-lg text-center max-h-[90vh] overflow-y-auto">
+            <h3 class="text-base font-bold text-white mb-3 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-camera text-gold"></i> สแกนรูปภาพ/ใบแจ้งยอด กบข.
+            </h3>
+            
+            <div class="border-2 border-dashed border-slate-700 p-5 rounded-xl mb-3 hover:border-amber-500 cursor-pointer bg-slate-900/50 transition-all" onclick="document.getElementById('fileInput').click()">
                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-gold mb-2"></i>
                 <p class="text-xs font-semibold text-white">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
-                <p class="text-[10px] text-gray-400 mt-1">รองรับไฟล์สลิป หรือหน้าจอแอป กบข.</p>
-                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="alert('ระบบสแกน OCR พร้อมประมวลผล')">
+                <p class="text-[10px] text-gray-400 mt-1">รองรับไฟล์รูปสลิป หรือหน้าจอแอป กบข.</p>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processOcrImage(event)">
             </div>
+
+            <div id="ocrStatusContainer" class="hidden my-3 p-3 bg-slate-900 rounded-lg border border-slate-800 text-left space-y-2">
+                <img id="ocrPreviewImg" class="max-h-36 mx-auto rounded border border-slate-700 hidden mb-2" alt="Preview">
+                <div class="flex items-center gap-2">
+                    <div id="ocrSpinner" class="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span id="ocrStatusText" class="text-xs text-amber-400 font-medium">กำลังอ่านข้อมูลจากรูปภาพ...</span>
+                </div>
+            </div>
+
+            <div id="ocrResultForm" class="hidden text-left space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs mb-3">
+                <p class="text-gold font-bold text-xs border-b border-slate-800 pb-1 mb-2">ข้อมูลที่สแกนพบ (ตรวจสอบ/แก้ไขก่อนบันทึก):</p>
+                <div>
+                    <label class="text-gray-400">ชื่อแผนลงทุน:</label>
+                    <input type="text" id="ocrPlanName" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-gray-400">NAV (บาท):</label>
+                        <input type="number" step="0.0001" id="ocrNav" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-gray-400">จำนวนหน่วย:</label>
+                        <input type="number" step="0.0001" id="ocrUnits" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-white mt-0.5 outline-none focus:border-amber-500">
+                    </div>
+                </div>
+                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2 rounded text-xs mt-3"><i class="fa-solid fa-check mr-1"></i> ยืนยันเพิ่ม/อัปเดตเข้าพอร์ต</button>
+            </div>
+
             <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-1.5 rounded text-xs w-full">ปิดหน้าต่าง</button>
         </div>
     </div>
@@ -435,7 +446,6 @@
             const totalYtdProfitBaht = totalVal - baseStartVal;
             const totalYtdPct = baseStartVal > 0 ? (totalYtdProfitBaht / baseStartVal) * 100 : 0;
 
-            // Render TFOOT Total Summary Row
             const tableFoot = document.getElementById('fundTableFoot');
             tableFoot.innerHTML = `
                 <tr>
@@ -480,7 +490,6 @@
             renderHistoryTable(totalVal, dailyProfitSum, totalProfit);
         }
 
-        // Line Chart: Portfolio Growth Trend Line
         function renderTrendLineChart() {
             const ctx = document.getElementById('trendLineChart').getContext('2d');
             if (lineChartInstance) lineChartInstance.destroy();
@@ -538,7 +547,6 @@
             });
         }
 
-        // Bar Chart: Profit Performance
         function renderProfitBarChart(labels, dataPct) {
             const ctx = document.getElementById('profitBarChart').getContext('2d');
             if (barChartInstance) barChartInstance.destroy();
@@ -592,7 +600,6 @@
             });
         }
 
-        // Target Allocation with Progress Bar & ±5% Rebalance Alert
         function renderAllocation(totalVal) {
             const allocBody = document.getElementById('allocTableBody');
             allocBody.innerHTML = '';
@@ -684,7 +691,97 @@
 
         function closeFundModal() { document.getElementById('fundModal').classList.add('hidden'); }
         function openOcrModal() { document.getElementById('ocrModal').classList.remove('hidden'); }
-        function closeOcrModal() { document.getElementById('ocrModal').classList.add('hidden'); }
+        function closeOcrModal() { 
+            document.getElementById('ocrModal').classList.add('hidden'); 
+            document.getElementById('ocrStatusContainer').classList.add('hidden');
+            document.getElementById('ocrResultForm').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+        }
+
+        /* ---------------- OCR Processing Engine ---------------- */
+        async function processOcrImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusContainer = document.getElementById('ocrStatusContainer');
+            const statusText = document.getElementById('ocrStatusText');
+            const previewImg = document.getElementById('ocrPreviewImg');
+            const spinner = document.getElementById('ocrSpinner');
+            const resultForm = document.getElementById('ocrResultForm');
+
+            statusContainer.classList.remove('hidden');
+            resultForm.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
+
+            previewImg.src = URL.createObjectURL(file);
+            previewImg.classList.remove('hidden');
+
+            try {
+                // เรียกใช้ Tesseract OCR รองรับทั้งภาษาไทยและอังกฤษ
+                const worker = await Tesseract.createWorker('tha+eng');
+                const ret = await worker.recognize(file);
+                await worker.terminate();
+
+                const text = ret.data.text;
+                console.log("OCR Result:", text);
+
+                // สกัดหาข้อมูลตัวเลขและชื่อแผนจากข้อความ
+                let detectedPlan = "แผนหุ้นต่างประเทศ";
+                if (text.includes("ตราสารหนี้")) detectedPlan = "แผนตราสารหนี้";
+                else if (text.includes("ตลาดเงิน")) detectedPlan = "แผนตลาดเงิน";
+                else if (text.includes("อสังหา")) detectedPlan = "แผนอสังหาริมทรัพย์";
+                else if (text.includes("สมดุล")) detectedPlan = "แผนสมดุลตามอายุ";
+
+                // ค้นหาตัวเลขที่มีทศนิยม (เช่น NAV หรือ จำนวนหน่วย)
+                const numberMatches = text.match(/\d+[\.,]\d{2,4}/g) || [];
+                const numbers = numberMatches.map(n => parseFloat(n.replace(',', '')));
+
+                let navFound = numbers.length > 0 ? numbers[0] : 10.0;
+                let unitsFound = numbers.length > 1 ? numbers[1] : 1000.0;
+
+                // นำค่าเข้าฟอร์มพรีวิว
+                document.getElementById('ocrPlanName').value = detectedPlan;
+                document.getElementById('ocrNav').value = navFound;
+                document.getElementById('ocrUnits').value = unitsFound;
+
+                statusText.innerText = "สแกนสำเร็จ! กรุณาตรวจสอบข้อมูล";
+                spinner.classList.add('hidden');
+                resultForm.classList.remove('hidden');
+
+            } catch (err) {
+                console.error("OCR Error:", err);
+                statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ กรุณาลองใหม่อีกครั้ง";
+                spinner.classList.add('hidden');
+            }
+        }
+
+        async function applyOcrData() {
+            const planName = document.getElementById('ocrPlanName').value;
+            const nav = parseFloat(document.getElementById('ocrNav').value) || 0;
+            const units = parseFloat(document.getElementById('ocrUnits').value) || 0;
+
+            const existingIndex = funds.findIndex(f => f.code.includes(planName) || planName.includes(f.code));
+
+            if (existingIndex >= 0) {
+                funds[existingIndex].currentNav = nav;
+                if (units > 0) funds[existingIndex].units = units;
+            } else {
+                funds.push({
+                    id: 'fund_' + Date.now(),
+                    code: planName,
+                    avgNav: nav,
+                    currentNav: nav,
+                    units: units,
+                    targetPct: 0
+                });
+            }
+
+            await saveToFirebase();
+            renderAll();
+            closeOcrModal();
+            alert("อัปเดตข้อมูลจากการสแกนเข้าพอร์ตเรียบร้อยแล้ว!");
+        }
 
         async function saveFund() {
             const id = document.getElementById('editFundId').value;
@@ -727,14 +824,13 @@
             }
         }
 
-        // CSV Export with UTF-8 BOM for Thai Excel Support
         function exportCSV() {
             if (!funds || funds.length === 0) {
                 alert("ไม่มีข้อมูลสำหรับส่งออก");
                 return;
             }
             
-            let csvContent = "\uFEFF"; // UTF-8 BOM Header
+            let csvContent = "\uFEFF";
             csvContent += "ชื่อแผนลงทุน,NAV ต้นทุน,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
 
             funds.forEach(f => {
@@ -806,7 +902,6 @@
 
         loadData();
        
-        // Register PWA Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
