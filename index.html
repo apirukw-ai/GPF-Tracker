@@ -713,27 +713,7 @@ console.log(
     )
 );
 
-const switchInIndex = cleanText.lastIndexOf("เปลี่ยนแผนการลงทุนเข้า");
 
-if (switchInIndex === -1) {
-    throw new Error(
-        "ไม่พบข้อความ 'เปลี่ยนแผนการลงทุนเข้า'"
-    );
-}
-
-console.log("SWITCH IN INDEX =", switchInIndex);
-
-        const switchBlock = cleanText.substring(
-            switchInIndex,
-            switchInIndex + 500
-        );
-
-        console.log("SWITCH BLOCK");
-        console.log(switchBlock);
-        const nums = switchBlock.match(/[\d,]+\.\d+/g) || [];
-
-console.log("SWITCH NUMBERS");
-console.log(nums);
         // --------------------------------------------------------
 
         // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
