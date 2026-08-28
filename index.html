@@ -309,7 +309,7 @@
                 <img id="ocrPreviewImg" class="max-h-36 mx-auto rounded border border-slate-700 hidden mb-2" alt="Preview">
                 <div class="flex items-center gap-2">
                     <div id="ocrSpinner" class="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                    <span id="ocrStatusText" class="text-xs text-amber-400 font-medium">กำลังปรับแต่งภาพและสแกน (OCR)...</span>
+                    <span id="ocrStatusText" class="text-xs text-amber-400 font-medium">กำลังอ่านข้อมูลจากรูปภาพ (OCR)...</span>
                 </div>
             </div>
 
@@ -710,35 +710,7 @@
             document.getElementById('fileInput').value = '';
         }
 
-        /* ---------------- Pre-processing ภาพเพื่อแยก Comma ให้ชัดเจนขึ้น ---------------- */
-        function preprocessImage(imgElement) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // ขยายภาพ 2 เท่า เพื่อให้ Comma แยกห่างจากตัวเลข
-            const scale = 2;
-            canvas.width = imgElement.naturalWidth * scale;
-            canvas.height = imgElement.naturalHeight * scale;
-            
-            ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-            
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            
-            // แปลงภาพเป็น Grayscale & High Contrast Binarization
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                const threshold = avg < 160 ? 0 : 255;
-                data[i] = threshold;     // R
-                data[i + 1] = threshold; // G
-                data[i + 2] = threshold; // B
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-            return canvas.toDataURL('image/png');
-        }
-
-        /* ---------------- OCR Engine & Robust Regex Parser ---------------- */
+        /* ---------------- OCR Processing Engine ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -752,69 +724,63 @@
             statusContainer.classList.remove('hidden');
             resultForm.classList.add('hidden');
             spinner.classList.remove('hidden');
-            statusText.innerText = "กำลังปรับแต่งภาพและสแกน (OCR)...";
+            statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
 
-            previewImg.src = URL.createObjectURL(file);
+            const objectUrl = URL.createObjectURL(file);
+            previewImg.src = objectUrl;
             previewImg.classList.remove('hidden');
 
             previewImg.onload = async () => {
                 try {
-                    const processedImageBase64 = preprocessImage(previewImg);
-
+                    // ใช้เอนจิน OCR ภาษาไทยและอังกฤษโดยไม่บล็อก Whitelist
                     const worker = await Tesseract.createWorker('tha+eng');
-                    
-                    // จำกัด Whitelist เพื่อแก้ปัญหา OCR เดา Comma เพี้ยนเป็นตัวการันต์หรืออักขระอื่น
-                    await worker.setParameters({
-                        tessedit_char_whitelist: '0123456789.,แผนหุ้นไทยกองทุนอสังหาริมทรัพย์ต่างประเทศจำนวนหน่วยมูลค่าต่อรวมเงิน : ',
-                    });
-
-                    const ret = await worker.recognize(processedImageBase64);
+                    const ret = await worker.recognize(file);
                     await worker.terminate();
 
                     let text = ret.data.text;
-                    console.log("OCR Raw Text:\n", text);
-
-                    // ลบตัวอักษรเพี้ยนรบกวนที่พบบ่อย
-                    text = text.replace(/['`’]/g, '').replace(/[\u0e4c]/g, '');
+                    console.log("=== OCR Output Text ===\n", text);
 
                     // 1. ค้นหาชื่อแผนลงทุน
                     let detectedPlan = "แผนหุ้นไทย";
-                    const planMatch = text.match(/แผน[^\n\r]+/);
-                    if (planMatch) {
-                        detectedPlan = planMatch[0].trim();
-                    } else if (text.includes("อสังหา")) {
+                    if (text.includes("อสังหา")) {
                         detectedPlan = "แผนกองทุนอสังหาริมทรัพย์ไทย";
                     } else if (text.includes("ต่างประเทศ")) {
                         detectedPlan = "แผนหุ้นต่างประเทศ";
+                    } else if (text.includes("ตราสารหนี้")) {
+                        detectedPlan = "แผนตราสารหนี้";
+                    } else {
+                        const planMatch = text.match(/แผน[^\n\r]+/);
+                        if (planMatch) detectedPlan = planMatch[0].trim();
                     }
 
-                    // 2. ฟังก์ชันดึงตัวเลขยืดหยุ่น ป้องกันปัญหา Comma (,) หรือจุด (.) เพี้ยน
-                    const extractNumber = (keyword) => {
-                        const regex = new RegExp(keyword + "[\\s:]*([\\d,\\.\\s]+)", "i");
-                        const match = text.match(regex);
-                        if (!match) return 0;
+                    // 2. ดึงทศนิยมทั้งหมดในภาพเรียงตามลำดับ (รวมจุลภาค)
+                    const rawNumbers = text.match(/[\d,]+\.\d+/g) || [];
+                    const parsedNumbers = rawNumbers.map(n => parseFloat(n.replace(/,/g, '')));
 
-                        let str = match[1].trim();
-                        
-                        // ถ้าระบุทศนิยมชัดเจน
-                        const parts = str.split('.');
-                        if (parts.length > 1) {
-                            const integerPart = parts[0].replace(/[^\d]/g, '');
-                            const decimalPart = parts[1].replace(/[^\d]/g, '').slice(0, 4);
-                            return parseFloat(`${integerPart}.${decimalPart}`);
-                        }
-                        return parseFloat(str.replace(/[^\d.]/g, '')) || 0;
-                    };
+                    let unitsFound = 0;
+                    let navFound = 0;
+                    let totalFound = 0;
 
-                    const unitsFound = extractNumber("จำนวนหน่วย");
-                    const navFound = extractNumber("มูลค่าต่อหน่วย");
-                    let totalFound = extractNumber("รวมเงิน");
+                    // ค้นหาตาม Regex คีย์เวิร์ดภาษาไทย
+                    const unitsMatch = text.match(/(?:จำนวนหน่วย|หน่วย)[\s:]*([\d,]+\.\d+)/);
+                    if (unitsMatch) unitsFound = parseFloat(unitsMatch[1].replace(/,/g, ''));
+
+                    const navMatch = text.match(/(?:มูลค่าต่อหน่วย|NAV)[\s:]*([\d,]+\.\d+)/);
+                    if (navMatch) navFound = parseFloat(navMatch[1].replace(/,/g, ''));
+
+                    const totalMatch = text.match(/(?:รวมเงิน|มูลค่า)[\s:]*([\d,]+\.\d+)/);
+                    if (totalMatch) totalFound = parseFloat(totalMatch[1].replace(/,/g, ''));
+
+                    // Fallback ลำดับบรรทัดตามตาราง กบข. (บรรทัด 1 = หน่วย, บรรทัด 2 = NAV, บรรทัด 3 = รวมเงิน)
+                    if (unitsFound === 0 && parsedNumbers.length >= 1) unitsFound = parsedNumbers[0];
+                    if (navFound === 0 && parsedNumbers.length >= 2) navFound = parsedNumbers[1];
+                    if (totalFound === 0 && parsedNumbers.length >= 3) totalFound = parsedNumbers[2];
 
                     if (totalFound === 0 && unitsFound > 0 && navFound > 0) {
                         totalFound = unitsFound * navFound;
                     }
 
-                    // นำค่าไปแสดงผลบนฟอร์ม
+                    // แสดงผลบนฟอร์ม
                     document.getElementById('ocrPlanName').value = detectedPlan;
                     document.getElementById('ocrUnits').value = unitsFound > 0 ? unitsFound : '';
                     document.getElementById('ocrNav').value = navFound > 0 ? navFound : '';
