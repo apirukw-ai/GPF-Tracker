@@ -352,10 +352,6 @@
             return rule ? rule.fundId : null;
         }
 
-        /* ---------------- Owner: recalculateAvgNavs() ----------------
-           คำนวณเฉพาะ avgNav จาก gpf_transactions (Single Source of Truth)
-           ห้ามแตะ fund.units และ fund.currentNav โดยเด็ดขาด
-        ------------------------------------------------------------- */
 /* ---------------- Owner: recalculateAvgNavs() ----------------
    คำนวณเฉพาะ avgNav จาก gpf_transactions (Single Source of Truth)
    โดยกรองเฉพาะ type 'INITIAL' (ตั้งต้น) และ 'OCR_BUY' (ซื้อเพิ่ม)
@@ -404,6 +400,11 @@ function recalculateAvgNavs() {
                 renderAll();
             } catch (err) {
                 console.error("Load Data Error:", err);
+                // ✅ เพิ่ม 4 บรรทัดนี้ลงไป
+                funds = [];
+                historyLogs = [];
+                gpfTransactions = [];
+                renderAll();
             }
         }
 
@@ -997,8 +998,10 @@ PDF PARSER (EXPERIMENTAL)
             alert(`บันทึก gpf_transactions สำเร็จ ${updatedCount} รายการ และคำนวณ avgNav ใหม่เรียบร้อยแล้ว!`);
         }
 
-        function openFundModal(id = null) {
+function openFundModal(id = null) {
             document.getElementById('editFundId').value = id || '';
+            const avgNavInput = document.getElementById('inputAvgNav'); // ดึง element
+
             if (id) {
                 const f = funds.find(item => item.id === id);
                 if (f) {
@@ -1008,6 +1011,10 @@ PDF PARSER (EXPERIMENTAL)
                     document.getElementById('inputCurrentNav').value = f.currentNav || '';
                     document.getElementById('inputUnits').value = f.units || '';
                     document.getElementById('inputTargetPct').value = f.targetPct || 0;
+                    
+                    // ป้องกันการแก้ไข avgNav (บังคับให้อ่านอย่างเดียว) เพราะต้องคำนวณจาก Transaction
+                    avgNavInput.setAttribute('readonly', true);
+                    avgNavInput.classList.add('opacity-50', 'cursor-not-allowed');
                 }
             } else {
                 document.getElementById('modalTitle').innerText = "เพิ่มแผนลงทุน";
@@ -1016,10 +1023,13 @@ PDF PARSER (EXPERIMENTAL)
                 document.getElementById('inputCurrentNav').value = '';
                 document.getElementById('inputUnits').value = '';
                 document.getElementById('inputTargetPct').value = '';
+                
+                // ปลดล็อคให้กรอก avgNav ได้ตอนเพิ่มแผนใหม่ (เพื่อสร้าง INITIAL)
+                avgNavInput.removeAttribute('readonly');
+                avgNavInput.classList.remove('opacity-50', 'cursor-not-allowed');
             }
             document.getElementById('fundModal').classList.remove('hidden');
         }
-
         function closeFundModal() { document.getElementById('fundModal').classList.add('hidden'); }
         function openOcrModal() { document.getElementById('ocrModal').classList.remove('hidden'); }
         function closeOcrModal() { 
@@ -1077,9 +1087,14 @@ PDF PARSER (EXPERIMENTAL)
             renderAll();
         }
 
-        async function deleteFund(id) {
+async function deleteFund(id) {
             if (confirm("คุณต้องการลบแผนลงทุนนี้ใช่หรือไม่?")) {
+                // ลบแผนออกจากพอร์ต
                 funds = funds.filter(f => f.id !== id);
+                
+                // ✅ เพิ่มบรรทัดนี้: ลบประวัติที่เกี่ยวข้องกับแผนนี้ทิ้งไปด้วย
+                gpfTransactions = gpfTransactions.filter(t => t.fundId !== id);
+                
                 await saveToFirebase();
                 renderAll();
             }
