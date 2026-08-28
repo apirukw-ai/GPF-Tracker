@@ -20,8 +20,14 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
-    <!-- Tesseract.js (OCR Engine) -->
+    <!-- Tesseract.js (OCR Engine - ช่องทางสำรอง) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- PDF.js Engine (ช่องทางหลัก - อ่าน Statement) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 
     <style>
         :root {
@@ -92,11 +98,19 @@
 
             <!-- Action Buttons Right -->
             <div class="flex flex-wrap gap-2">
-                <button onclick="exportCSV()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30"><i class="fa-solid fa-file-excel"></i> Export CSV</button>
-                <button onclick="exportData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-export"></i> JSON</button>
-                <button onclick="importData()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import</button>
-                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30"><i class="fa-solid fa-camera"></i> สแกนสลิปอัปเดตหลายแผนพร้อมกัน</button>
-                <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผนลงทุน</button>
+                <!-- ช่องทางหลัก: นำเข้า PDF Statement -->
+                <button onclick="document.getElementById('pdfFileInput').click()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30">
+                    <i class="fa-solid fa-file-pdf"></i> นำเข้า PDF Statement (หลัก)
+                </button>
+                <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="processPdfStatement(event)">
+
+                <!-- ช่องทางสำรอง: OCR รูปภาพ -->
+                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30">
+                    <i class="fa-solid fa-camera"></i> สแกนรูปสลิป (ด่วน)
+                </button>
+
+                <button onclick="exportCSV()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> CSV</button>
+                <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผน</button>
             </div>
         </header>
 
@@ -237,9 +251,9 @@
                 <thead>
                     <tr>
                         <th>ชื่อแผนลงทุน</th>
-                        <th class="text-right">NAV ต้นทุน (สแกน)</th>
+                        <th class="text-right">NAV ต้นทุน (PDF)</th>
                         <th class="text-right">NAV ปัจจุบัน (Auto)</th>
-                        <th class="text-right">จำนวนหน่วย (สแกน)</th>
+                        <th class="text-right">จำนวนหน่วย (Statement)</th>
                         <th class="text-right">มูลค่าปัจจุบัน</th>
                         <th class="text-right">กำไรทุนสะสม</th>
                         <th class="text-right">กำไรวันนี้</th>
@@ -266,7 +280,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="text-gray-400">NAV ต้นทุน</label>
+                        <label class="text-gray-400">NAV ต้นทุน (avgNav)</label>
                         <input type="number" step="0.0001" id="inputAvgNav" placeholder="0.0000" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white mt-1 focus:border-amber-500 outline-none">
                     </div>
                     <div>
@@ -275,7 +289,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="text-gray-400">จำนวนหน่วย</label>
+                    <label class="text-gray-400">จำนวนหน่วย (units)</label>
                     <input type="number" step="0.0001" id="inputUnits" placeholder="0.0000" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white mt-1 focus:border-amber-500 outline-none">
                 </div>
                 <div>
@@ -290,21 +304,20 @@
         </div>
     </div>
 
-    <!-- OCR Modal (Multi-Plan Batch Processing) -->
+    <!-- OCR Modal (ช่องทางสำรอง - อัปเดตเฉพาะ units) -->
     <div id="ocrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
         <div class="card-gold p-6 w-full max-w-xl text-center max-h-[90vh] overflow-y-auto">
             <h3 class="text-base font-bold text-white mb-3 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-camera text-gold"></i> สแกนสลิปอัปเดตหลายแผนพร้อมกัน
+                <i class="fa-solid fa-camera text-gold"></i> สแกนสลิปสรุปพอร์ต (อัปเดตเฉพาะจำนวนหน่วย)
             </h3>
             
             <div class="border-2 border-dashed border-slate-700 p-4 rounded-xl mb-3 hover:border-amber-500 cursor-pointer bg-slate-900/50 transition-all" onclick="document.getElementById('fileInput').click()">
                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-gold mb-2"></i>
                 <p class="text-xs font-semibold text-white">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
-                <p class="text-[10px] text-gray-400 mt-1">สแกนดึงเฉพาะ "จำนวนหน่วย" และ "NAV ต้นทุน" ของทุกกองทุนที่เจอในสลิป</p>
+                <p class="text-[10px] text-gray-400 mt-1">สแกนดึงเฉพาะ "จำนวนหน่วยสะสม (Units)" สำหรับกรณีเร่งด่วน โดยไม่แตะ NAV ต้นทุน</p>
                 <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processOcrImage(event)">
             </div>
 
-            <!-- Preview Image & Loading Status -->
             <div id="ocrStatusContainer" class="hidden my-3 p-3 bg-slate-900 rounded-lg border border-slate-800 text-left space-y-2">
                 <img id="ocrPreviewImg" class="max-h-36 mx-auto rounded border border-slate-700 hidden mb-2" alt="Preview">
                 <div class="flex items-center gap-2">
@@ -313,18 +326,16 @@
                 </div>
             </div>
 
-            <!-- Multi-Plan OCR Container -->
             <div id="ocrResultForm" class="hidden text-left bg-slate-900 p-3.5 rounded-lg border border-slate-800 text-xs mb-3 space-y-3">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                     <span class="text-gold font-bold text-xs"><i class="fa-solid fa-list-check mr-1"></i> รายการกองทุนที่พบ:</span>
                     <span id="ocrCountBadge" class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded border border-amber-500/40">0 รายการ</span>
                 </div>
 
-                <!-- Dynamic Items Rendered Here -->
                 <div id="ocrPlanListContainer" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
 
-                <p class="text-[10px] text-gray-500 italic mt-1">* มูลค่าปัจจุบันของพอร์ตจะคำนวณจาก (จำนวนหน่วย × NAV ปัจจุบัน Auto-Sync) โดยอัตโนมัติ</p>
-                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2.5 rounded text-xs font-bold mt-2 shadow-lg shadow-amber-900/30"><i class="fa-solid fa-check-double mr-1"></i> ยืนยันบันทึกทุกแผนเข้าพอร์ตพร้อมกัน</button>
+                <p class="text-[10px] text-emerald-400/90 italic mt-1">* ระบบจะอัปเดตเฉพาะจำนวนหน่วยเข้าสู่พอร์ต โดยรักษา NAV ต้นทุนเดิมไว้อย่างปลอดภัย</p>
+                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2.5 rounded text-xs font-bold mt-2 shadow-lg shadow-amber-900/30"><i class="fa-solid fa-check-double mr-1"></i> ยืนยันอัปเดตจำนวนหน่วยสะสมเข้าพอร์ต</button>
             </div>
 
             <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-1.5 rounded text-xs w-full">ปิดหน้าต่าง</button>
@@ -373,6 +384,9 @@
                 } else {
                     funds = [];
                 }
+
+                // คลีนกองทุนขยะที่อาจถูกสร้างผิดไว้ก่อนหน้า
+                funds = funds.filter(f => !f.id.startsWith('fund_'));
                 
                 renderAll();
             } catch (err) {
@@ -419,9 +433,9 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${getPlanBadge(f.code)}</td>
-                    <td class="text-right">฿${f.avgNav.toFixed(4)}</td>
-                    <td class="text-right text-gold font-semibold">฿${f.currentNav.toFixed(4)}</td>
-                    <td class="text-right">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
+                    <td class="text-right font-semibold text-amber-300">฿${f.avgNav.toFixed(4)}</td>
+                    <td class="text-right text-gold font-bold">฿${f.currentNav.toFixed(4)}</td>
+                    <td class="text-right font-bold text-emerald-400">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
                     <td class="text-right font-semibold text-white">฿${formatNum(fVal)}</td>
                     <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${profitPct.toFixed(2)}%)
@@ -668,6 +682,210 @@
             });
         }
 
+        /* ---------------- PDF Statement Processing Engine (ช่องทางหลัก: pdf.js) ---------------- */
+        async function processPdfStatement(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                let fullText = "";
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(" ");
+                    fullText += pageText + "\n";
+                }
+
+                console.log("=== PDF STATEMENT RAW TEXT ===", fullText);
+
+                const planTargets = [
+                    { id: "gpf_thai", key: "หุ้นไทย", name: "แผนหุ้นไทย" },
+                    { id: "gpf_prop", key: "อสังหาริมทรัพย์", name: "แผนกองทุนอสังหาริมทรัพย์ไทย" },
+                    { id: "gpf_global", key: "ต่างประเทศ", name: "แผนหุ้นต่างประเทศ" },
+                    { id: "gpf_bond", key: "ตราสารหนี้", name: "แผนตราสารหนี้" }
+                ];
+
+                let updatedCount = 0;
+
+                planTargets.forEach(target => {
+                    const fund = funds.find(f => f.id === target.id || f.code.includes(target.key));
+                    if (!fund) return;
+
+                    // Regex สกัดค่าจาก PDF: มูลค่าต่อหน่วย (NAV) | จำนวนหน่วย | จำนวนเงิน
+                    const regex = new RegExp(target.key + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
+                    let match;
+                    let lastCostNav = 0;
+                    let lastUnits = 0;
+
+                    while ((match = regex.exec(fullText)) !== null) {
+                        lastCostNav = parseFloat(match[1].replace(/,/g, ''));
+                        lastUnits = parseFloat(match[2].replace(/,/g, ''));
+                    }
+
+                    if (lastCostNav > 0 && lastUnits > 0) {
+                        fund.avgNav = lastCostNav; // อัปเดต NAV ต้นทุนถัวเฉลี่ย
+                        fund.units = lastUnits;   // อัปเดตจำนวนหน่วยล่าสุด
+                        updatedCount++;
+                    }
+                });
+
+                if (updatedCount > 0) {
+                    await saveToFirebase();
+                    renderAll();
+                    alert(`นำเข้า PDF Statement สำเร็จ! อัปเดต NAV ต้นทุน (avgNav) และหน่วยเรียบร้อยแล้ว ${updatedCount} แผน`);
+                } else {
+                    alert("ไม่สามารถอ่านข้อมูลแผนลงทุนจากไฟล์ PDF ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Statement จาก กบข. หรือไม่");
+                }
+
+            } catch (err) {
+                console.error("PDF Processing Error:", err);
+                alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF Statement");
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+        /* ---------------- OCR Processing Engine (ช่องทางสำรอง: ดึงเฉพาะ Units) ---------------- */
+        async function processOcrImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusContainer = document.getElementById('ocrStatusContainer');
+            const statusText = document.getElementById('ocrStatusText');
+            const previewImg = document.getElementById('ocrPreviewImg');
+            const spinner = document.getElementById('ocrSpinner');
+            const resultForm = document.getElementById('ocrResultForm');
+            const listContainer = document.getElementById('ocrPlanListContainer');
+
+            statusContainer.classList.remove('hidden');
+            resultForm.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
+
+            const objectUrl = URL.createObjectURL(file);
+            previewImg.src = objectUrl;
+            previewImg.classList.remove('hidden');
+
+            previewImg.onload = async () => {
+                try {
+                    const worker = await Tesseract.createWorker('tha+eng');
+                    const ret = await worker.recognize(file);
+                    await worker.terminate();
+
+                    let text = ret.data.text;
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+                    detectedOcrPlans = [];
+                    let currentPlan = null;
+
+                    lines.forEach((line) => {
+                        if (
+                            line.includes("หุ้นไทย") ||
+                            line.includes("ต่างประเทศ") ||
+                            line.includes("อสังหา") ||
+                            line.includes("อสังหาริมทรัพย์") ||
+                            line.includes("ตราสารหนี้")
+                        ) {
+                            if (currentPlan && currentPlan.numbers.length >= 1) {
+                                detectedOcrPlans.push({
+                                    planName: currentPlan.name,
+                                    units: currentPlan.numbers[0]
+                                });
+                            }
+
+                            let name = "";
+                            if (line.includes("หุ้นไทย")) name = "แผนหุ้นไทย";
+                            else if (line.includes("อสังหา") || line.includes("อสังหาริมทรัพย์")) name = "แผนกองทุนอสังหาริมทรัพย์ไทย";
+                            else if (line.includes("ต่างประเทศ")) name = "แผนหุ้นต่างประเทศ";
+                            else if (line.includes("ตราสารหนี้")) name = "แผนตราสารหนี้";
+
+                            currentPlan = { name, numbers: [] };
+                        } else if (currentPlan) {
+                            const nums = line.match(/[\d,]+\.\d+/g);
+                            if (nums) {
+                                nums.forEach(n => currentPlan.numbers.push(parseFloat(n.replace(/,/g, ''))));
+                            }
+                        }
+                    });
+
+                    if (currentPlan && currentPlan.numbers.length >= 1) {
+                        detectedOcrPlans.push({ planName: currentPlan.name, units: currentPlan.numbers[0] });
+                    }
+
+                    listContainer.innerHTML = '';
+                    document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
+
+                    if (detectedOcrPlans.length === 0) {
+                        statusText.innerText = "ไม่พบข้อมูลกองทุนในภาพ กรุณาถ่ายสลิปให้ชัดเจน";
+                        spinner.classList.add('hidden');
+                        return;
+                    }
+
+                    detectedOcrPlans.forEach((item, index) => {
+                        const div = document.createElement('div');
+                        div.className = "bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-2";
+                        div.innerHTML = `
+                            <div class="flex justify-between items-center border-b border-slate-700/80 pb-1">
+                                <span class="font-bold text-amber-400 text-xs">#${index + 1} ${item.planName}</span>
+                                <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
+                            </div>
+                            <div>
+                                <label class="text-gray-400 text-[11px]">จำนวนหน่วยสะสม (Units):</label>
+                                <input type="number" step="0.0001" id="ocrUnits_${index}" value="${item.units || ''}" class="w-full bg-slate-900 border border-emerald-500/50 rounded p-1.5 text-emerald-400 font-bold mt-0.5 outline-none focus:border-emerald-500">
+                            </div>
+                        `;
+                        listContainer.appendChild(div);
+                    });
+
+                    statusText.innerText = `สแกนสำเร็จ พบจำนวนหน่วยทั้งหมด ${detectedOcrPlans.length} แผน`;
+                    spinner.classList.add('hidden');
+                    resultForm.classList.remove('hidden');
+
+                } catch (err) {
+                    console.error("OCR Error:", err);
+                    statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
+                    spinner.classList.add('hidden');
+                }
+            };
+        }
+
+        async function applyOcrData() {
+            if (detectedOcrPlans.length === 0) return;
+
+            // คลีนกองทุนขยะออกก่อน
+            funds = funds.filter(f => !f.id.startsWith('fund_'));
+
+            let updatedCount = 0;
+
+            detectedOcrPlans.forEach((_, index) => {
+                const planName = document.getElementById(`ocrPlanName_${index}`).value;
+                const units = parseFloat(document.getElementById(`ocrUnits_${index}`).value) || 0;
+
+                if (!planName || units === 0) return;
+
+                const existingFund = funds.find(f => {
+                    if (planName.includes("หุ้นไทย") && f.code.includes("หุ้นไทย")) return true;
+                    if ((planName.includes("อสังหา") || planName.includes("อสังหาริมทรัพย์")) && (f.code.includes("อสังหา") || f.code.includes("REIT"))) return true;
+                    if (planName.includes("ต่างประเทศ") && f.code.includes("ต่างประเทศ")) return true;
+                    if (planName.includes("ตราสารหนี้") && f.code.includes("ตราสารหนี้")) return true;
+                    return false;
+                });
+
+                if (existingFund) {
+                    existingFund.units = units; // ✅ อัปเดตเฉพาะ units เท่านั้น
+                    updatedCount++;
+                }
+            });
+
+            await saveToFirebase();
+            renderAll();
+            closeOcrModal();
+            alert(`อัปเดตจำนวนหน่วยสำเร็จทั้งหมด ${updatedCount} แผนเรียบร้อยแล้ว!`);
+        }
+
         function openFundModal(id = null) {
             document.getElementById('editFundId').value = id || '';
             if (id) {
@@ -700,208 +918,6 @@
             document.getElementById('fileInput').value = '';
         }
 
-        /* ---------------- OCR Processing Engine ---------------- */
-        async function processOcrImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const statusContainer = document.getElementById('ocrStatusContainer');
-            const statusText = document.getElementById('ocrStatusText');
-            const previewImg = document.getElementById('ocrPreviewImg');
-            const spinner = document.getElementById('ocrSpinner');
-            const resultForm = document.getElementById('ocrResultForm');
-            const listContainer = document.getElementById('ocrPlanListContainer');
-
-            statusContainer.classList.remove('hidden');
-            resultForm.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
-
-            const objectUrl = URL.createObjectURL(file);
-            previewImg.src = objectUrl;
-            previewImg.classList.remove('hidden');
-
-            previewImg.onload = async () => {
-                try {
-                    const worker = await Tesseract.createWorker('tha+eng');
-                    const ret = await worker.recognize(file);
-                    await worker.terminate();
-
-                    let text = ret.data.text;
-                    console.log("=== OCR Raw Output Text ===\n", text);
-
-                    const lines = text
-                        .split('\n')
-                        .map(l => l.trim())
-                        .filter(l => l.length > 0);
-
-                    console.log("=== OCR LINES ===");
-                    console.log(lines);
-
-                    detectedOcrPlans = [];
-                    let currentPlan = null;
-
-                    lines.forEach((line) => {
-                        if (
-                            line.includes("หุ้นไทย") ||
-                            line.includes("ต่างประเทศ") ||
-                            line.includes("อสังหา") ||
-                            line.includes("อสังหาริมทรัพย์") ||
-                            line.includes("ตราสารหนี้")
-                        ) {
-                            if (currentPlan && currentPlan.numbers.length >= 2) {
-                                detectedOcrPlans.push({
-                                    planName: currentPlan.name,
-                                    units: currentPlan.numbers[0],
-                                    nav: currentPlan.numbers[1]
-                                });
-                            }
-
-                            let name = "";
-                            if (line.includes("หุ้นไทย")) {
-                                name = "แผนหุ้นไทย";
-                            } else if (
-                                line.includes("อสังหา") ||
-                                line.includes("อสังหาริมทรัพย์")
-                            ) {
-                                name = "แผนกองทุนอสังหาริมทรัพย์ไทย";
-                            } else if (line.includes("ต่างประเทศ")) {
-                                name = "แผนหุ้นต่างประเทศ";
-                            } else if (line.includes("ตราสารหนี้")) {
-                                name = "แผนตราสารหนี้";
-                            }
-
-                            currentPlan = {
-                                name,
-                                numbers: []
-                            };
-                        } else if (currentPlan) {
-                            const nums = line.match(/[\d,]+\.\d+/g);
-                            if (nums) {
-                                nums.forEach(n => {
-                                    currentPlan.numbers.push(parseFloat(n.replace(/,/g, '')));
-                                });
-                            }
-                        }
-                    });
-
-                    if (currentPlan && currentPlan.numbers.length >= 2) {
-                        detectedOcrPlans.push({
-                            planName: currentPlan.name,
-                            units: currentPlan.numbers[0],
-                            nav: currentPlan.numbers[1]
-                        });
-                    }
-
-                    console.log("=== DETECTED PLANS FINAL ===", detectedOcrPlans);
-
-                    listContainer.innerHTML = '';
-                    document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
-
-                    if (detectedOcrPlans.length === 0) {
-                        statusText.innerText = "ไม่พบข้อมูลกองทุนในภาพ กรุณาถ่ายสลิปให้ชัดเจน";
-                        spinner.classList.add('hidden');
-                        return;
-                    }
-
-                    detectedOcrPlans.forEach((item, index) => {
-                        const div = document.createElement('div');
-                        div.className = "bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-2";
-                        div.innerHTML = `
-                            <div class="flex justify-between items-center border-b border-slate-700/80 pb-1">
-                                <span class="font-bold text-amber-400 text-xs">#${index + 1} ${item.planName}</span>
-                                <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                    <label class="text-gray-400 text-[11px]">จำนวนหน่วย (Units):</label>
-                                    <input type="number" step="0.0001" id="ocrUnits_${index}" value="${item.units || ''}" class="w-full bg-slate-900 border border-emerald-500/40 rounded p-1 text-white font-bold mt-0.5 outline-none focus:border-emerald-500">
-                                </div>
-                                <div>
-                                    <label class="text-gray-400 text-[11px]">NAV ต้นทุน (avgNav):</label>
-                                    <input type="number" step="0.0001" id="ocrNav_${index}" value="${item.nav || ''}" class="w-full bg-slate-900 border border-amber-500/40 rounded p-1 text-gold font-bold mt-0.5 outline-none focus:border-amber-500">
-                                </div>
-                            </div>
-                        `;
-                        listContainer.appendChild(div);
-                    });
-
-                    statusText.innerText = `สแกนสำเร็จ พบทั้งหมด ${detectedOcrPlans.length} แผนลงทุน`;
-                    spinner.classList.add('hidden');
-                    resultForm.classList.remove('hidden');
-
-                } catch (err) {
-                    console.error("OCR Error:", err);
-                    statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
-                    spinner.classList.add('hidden');
-                }
-            };
-        }
-
-        /* ---------------- บันทึกข้อมูลเข้า Firebase (ลบกองทุนที่ OCR สร้างผิด + Match เข้า id เดิม) ---------------- */
-        async function applyOcrData() {
-            if (detectedOcrPlans.length === 0) {
-                alert("ไม่พบข้อมูลกองทุนสำหรับบันทึก");
-                return;
-            }
-
-            // 1. ลบกองทุนขยะที่ OCR เคยสร้างผิด ( id ขึ้นต้นด้วย 'fund_' ) ออกจาก Array funds
-            funds = funds.filter(f => !f.id.startsWith('fund_'));
-
-            let updatedCount = 0;
-
-            detectedOcrPlans.forEach((_, index) => {
-                const planName = document.getElementById(`ocrPlanName_${index}`).value;
-                const costNav = parseFloat(document.getElementById(`ocrNav_${index}`).value) || 0;
-                const units = parseFloat(document.getElementById(`ocrUnits_${index}`).value) || 0;
-
-                if (!planName || (costNav === 0 && units === 0)) return;
-
-                // Debug Logging
-                console.log("OCR PLAN =", planName);
-                console.log("FUNDS =", funds.map(f => ({ id: f.id, code: f.code })));
-
-                // 2. จับคู่กับกองทุนเดิมตามเงื่อนไขที่กำหนด
-                const existingFund = funds.find(f => {
-                    if (planName.includes("หุ้นไทย") && f.code.includes("หุ้นไทย")) return true;
-                    if (planName.includes("อสังหา") && f.code.includes("อสังหา")) return true;
-                    if (planName.includes("ต่างประเทศ") && f.code.includes("ต่างประเทศ")) return true;
-                    if (planName.includes("ตราสารหนี้") && f.code.includes("ตราสารหนี้")) return true;
-                    return false;
-                });
-
-                console.log("MATCH =", existingFund);
-
-                if (existingFund) {
-                    // อัปเดตเฉพาะ NAV ต้นทุน และ จำนวนหน่วย ของกองทุนเดิมที่มี id มาตรฐาน (เช่น gpf_thai, gpf_prop)
-                    existingFund.avgNav = costNav;
-                    existingFund.units = units;
-                    updatedCount++;
-                } else {
-                    // หากหาไม่พบจริงๆ (เช่น เพิ่มแผนใหม่ในอนาคต) จึงค่อยกำหนด id ตามมาตรฐาน
-                    let newId = 'gpf_fund_' + Date.now();
-                    if (planName.includes("หุ้นไทย")) newId = 'gpf_thai';
-                    else if (planName.includes("อสังหา")) newId = 'gpf_prop';
-                    else if (planName.includes("ต่างประเทศ")) newId = 'gpf_global';
-
-                    funds.push({
-                        id: newId,
-                        code: planName,
-                        avgNav: costNav,
-                        currentNav: costNav,
-                        units: units,
-                        targetPct: 0
-                    });
-                    updatedCount++;
-                }
-            });
-
-            await saveToFirebase();
-            renderAll();
-            closeOcrModal();
-            alert(`อัปเดตข้อมูลสำเร็จทั้งหมด ${updatedCount} แผนเข้าสู่ ID กองทุนเดิมเรียบร้อยแล้ว!`);
-        }
-
         async function saveFund() {
             const id = document.getElementById('editFundId').value;
             const code = document.getElementById('inputCode').value;
@@ -921,7 +937,7 @@
                 }
             } else {
                 funds.push({
-                    id: 'fund_' + Date.now(),
+                    id: 'gpf_fund_' + Date.now(),
                     code: code,
                     avgNav: avgNav,
                     currentNav: currentNav,
@@ -944,10 +960,7 @@
         }
 
         function exportCSV() {
-            if (!funds || funds.length === 0) {
-                alert("ไม่มีข้อมูลสำหรับส่งออก");
-                return;
-            }
+            if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
             
             let csvContent = "\uFEFF";
             csvContent += "ชื่อแผนลงทุน,NAV ต้นทุน,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
@@ -968,38 +981,6 @@
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             document.body.removeChild(downloadAnchor);
-        }
-
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(funds));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", "gpf_portfolio_backup.json");
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function importData() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'application/json';
-            input.onchange = e => {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.readAsText(file, 'UTF-8');
-                reader.onload = async readerEvent => {
-                    try {
-                        funds = JSON.parse(readerEvent.target.result);
-                        await saveToFirebase();
-                        renderAll();
-                        alert("อิมพอร์ตข้อมูลสำเร็จ!");
-                    } catch(err) {
-                        alert("ไฟล์ JSON ไม่ถูกต้อง");
-                    }
-                }
-            }
-            input.click();
         }
 
         async function saveToFirebase() {
