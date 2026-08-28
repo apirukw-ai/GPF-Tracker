@@ -320,7 +320,7 @@
                     <span id="ocrCountBadge" class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded border border-amber-500/40">0 รายการ</span>
                 </div>
 
-                <!-- Dynamic Items Dynamic Rendered Here -->
+                <!-- Dynamic Items Rendered Here -->
                 <div id="ocrPlanListContainer" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
 
                 <p class="text-[10px] text-gray-500 italic mt-1">* มูลค่าปัจจุบันของพอร์ตจะคำนวณจาก (จำนวนหน่วย × NAV ปัจจุบัน Auto-Sync) โดยอัตโนมัติ</p>
@@ -700,7 +700,7 @@
             document.getElementById('fileInput').value = '';
         }
 
-        /* ---------------- OCR Processing Engine (การสกัดตาม คีย์เวิร์ด ชื่อแผนโดยตรง) ---------------- */
+        /* ---------------- OCR Processing Engine ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -742,7 +742,6 @@
                     let currentPlan = null;
 
                     lines.forEach((line) => {
-                        // ตรวจจับชื่อกองทุนโดยตรง
                         if (
                             line.includes("หุ้นไทย") ||
                             line.includes("ต่างประเทศ") ||
@@ -750,7 +749,6 @@
                             line.includes("อสังหาริมทรัพย์") ||
                             line.includes("ตราสารหนี้")
                         ) {
-                            // หากมีแผนก่อนหน้าที่ประมวลผลอยู่และได้ตัวเลขครบ 2 ค่าขึ้นไป ให้บันทึกเก็บเข้า Array ก่อน
                             if (currentPlan && currentPlan.numbers.length >= 2) {
                                 detectedOcrPlans.push({
                                     planName: currentPlan.name,
@@ -759,7 +757,6 @@
                                 });
                             }
 
-                            // Normalize ชื่อแผนลงทุน
                             let name = "";
                             if (line.includes("หุ้นไทย")) {
                                 name = "แผนหุ้นไทย";
@@ -779,7 +776,6 @@
                                 numbers: []
                             };
                         } else if (currentPlan) {
-                            // ดึงตัวเลขทศนิยมทั้งหมดในบรรทัดของแผนปัจจุบัน
                             const nums = line.match(/[\d,]+\.\d+/g);
                             if (nums) {
                                 nums.forEach(n => {
@@ -789,7 +785,6 @@
                         }
                     });
 
-                    // บันทึกแผนสุดท้ายที่ตกค้างอยู่ในลูป
                     if (currentPlan && currentPlan.numbers.length >= 2) {
                         detectedOcrPlans.push({
                             planName: currentPlan.name,
@@ -800,7 +795,6 @@
 
                     console.log("=== DETECTED PLANS FINAL ===", detectedOcrPlans);
 
-                    // แสดงผลรายการแผนทั้งหมดที่สแกนพบลง UI Modal
                     listContainer.innerHTML = '';
                     document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
 
@@ -844,7 +838,7 @@
             };
         }
 
-        /* ---------------- บันทึกทุกแผนลงทุนที่สแกนพบคืนลง Firebase ---------------- */
+        /* ---------------- บันทึกข้อมูลเข้า Firebase (แก้ไขการจับคู่แผนเดิม + ป้องกันค่ากลายเป็น 0) ---------------- */
         async function applyOcrData() {
             if (detectedOcrPlans.length === 0) {
                 alert("ไม่พบข้อมูลกองทุนสำหรับบันทึก");
@@ -860,16 +854,26 @@
 
                 if (!planName || (costNav === 0 && units === 0)) return;
 
-                const existingFund = funds.find(f => f.code.includes(planName) || planName.includes(f.code));
+                // Log ตรวจสอบการ Match แผน
+                console.log("OCR Plan:", planName);
+                console.log("Existing Funds:", funds.map(f => f.code));
+
+                // Match แผนเดิมด้วยคีย์เวิร์ด
+                const existingFund = funds.find(f => {
+                    const code = f.code || "";
+                    if (code.includes("หุ้นไทย") && planName.includes("หุ้นไทย")) return true;
+                    if ((code.includes("อสังหา") || code.includes("REIT")) && planName.includes("อสังหา")) return true;
+                    if (code.includes("ต่างประเทศ") && planName.includes("ต่างประเทศ")) return true;
+                    if (code.includes("ตราสารหนี้") && planName.includes("ตราสารหนี้")) return true;
+                    return code.includes(planName) || planName.includes(code);
+                });
 
                 if (existingFund) {
+                    // อัปเดตเฉพาะ NAV ต้นทุนและจำนวนหน่วย โดยไม่แตะ currentNav หรือ prevNav เดิม
                     existingFund.avgNav = costNav;
                     existingFund.units = units;
-
-                    if (!existingFund.currentNav) {
-                        existingFund.currentNav = costNav;
-                    }
                 } else {
+                    // หากเป็นแผนใหม่ ให้ตั้งค่าเริ่มต้น
                     funds.push({
                         id: 'fund_' + Date.now() + '_' + index,
                         code: planName,
