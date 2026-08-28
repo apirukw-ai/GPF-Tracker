@@ -701,13 +701,6 @@ async function processPdfStatement(event) {
 
         // ... โค้ดส่วนดึง cleanText ก่อนหน้า ...
 
-console.log("CLEAN PDF TEXT =", cleanText);
-
-console.log(cleanText.includes("หุ้นไทย"));
-console.log(cleanText.includes("อสังหาริมทรัพย์"));
-console.log(cleanText.includes("เปลี่ยน"));
-
-// ... โค้ดส่วนถัดไป ...
 
         // --- เพิ่มโค้ด Debug บล็อกเปลี่ยนแผนการลงทุน เข้า ตามที่ระบุ ---
         const cleanText = fullText.replace(/\s+/g, ' ');
@@ -720,6 +713,11 @@ console.log(cleanText.includes("เปลี่ยน"));
 
         const switchInIndex = cleanText.lastIndexOf("เปลี่ยนแผนการลงทุน เข้า");
 
+        if (switchInIndex === -1) {
+    throw new Error(
+        "ไม่พบข้อความ 'เปลี่ยนแผนการลงทุนเข้า'"
+    );
+}
         console.log("SWITCH IN INDEX =", switchInIndex);
 
         const switchBlock = cleanText.substring(
@@ -729,6 +727,10 @@ console.log(cleanText.includes("เปลี่ยน"));
 
         console.log("SWITCH BLOCK");
         console.log(switchBlock);
+        const nums = switchBlock.match(/[\d,]+\.\d+/g) || [];
+
+console.log("SWITCH NUMBERS");
+console.log(nums);
         // --------------------------------------------------------
 
         // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
