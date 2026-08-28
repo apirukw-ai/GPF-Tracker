@@ -732,14 +732,17 @@
 
             previewImg.onload = async () => {
                 try {
-                    // ใช้เอนจิน OCR ภาษาไทยและอังกฤษโดยไม่บล็อก Whitelist
                     const worker = await Tesseract.createWorker('tha+eng');
                     const ret = await worker.recognize(file);
                     await worker.terminate();
 
                     let text = ret.data.text;
-                    console.log("=== OCR Output Text ===\n", text);
-                    console.log(text.split('แผน'));
+                    console.log("=== OCR Raw Output Text ===\n", text);
+
+                    // ใช้ Regex Match ดึงทศนิยมทั้งหมดและ Log ค่าออกตามที่ต้องการ
+                    const values = text.match(/[\d,]+\.\d+/g) || [];
+                    console.log("OCR VALUES");
+                    console.log(text.match(/[\d,]+\.\d+/g));
 
                     // 1. ค้นหาชื่อแผนลงทุน
                     let detectedPlan = "แผนหุ้นไทย";
@@ -754,15 +757,14 @@
                         if (planMatch) detectedPlan = planMatch[0].trim();
                     }
 
-                    // 2. ดึงทศนิยมทั้งหมดในภาพเรียงตามลำดับ (รวมจุลภาค)
-                    const rawNumbers = text.match(/[\d,]+\.\d+/g) || [];
-                    const parsedNumbers = rawNumbers.map(n => parseFloat(n.replace(/,/g, '')));
+                    // 2. แปลงตัวเลขทศนิยมทั้งหมดเป็น Float
+                    const parsedNumbers = values.map(n => parseFloat(n.replace(/,/g, '')));
 
                     let unitsFound = 0;
                     let navFound = 0;
                     let totalFound = 0;
 
-                    // ค้นหาตาม Regex คีย์เวิร์ดภาษาไทย
+                    // ค้นหาตาม คีย์เวิร์ด Regex ภาษาไทยก่อน
                     const unitsMatch = text.match(/(?:จำนวนหน่วย|หน่วย)[\s:]*([\d,]+\.\d+)/);
                     if (unitsMatch) unitsFound = parseFloat(unitsMatch[1].replace(/,/g, ''));
 
@@ -772,7 +774,7 @@
                     const totalMatch = text.match(/(?:รวมเงิน|มูลค่า)[\s:]*([\d,]+\.\d+)/);
                     if (totalMatch) totalFound = parseFloat(totalMatch[1].replace(/,/g, ''));
 
-                    // Fallback ลำดับบรรทัดตามตาราง กบข. (บรรทัด 1 = หน่วย, บรรทัด 2 = NAV, บรรทัด 3 = รวมเงิน)
+                    // Fallback กรณีหาคีย์เวิร์ดไม่เจอ ให้ใช้ตัวเลขทศนิยมตามลำดับตาราง กบข.
                     if (unitsFound === 0 && parsedNumbers.length >= 1) unitsFound = parsedNumbers[0];
                     if (navFound === 0 && parsedNumbers.length >= 2) navFound = parsedNumbers[1];
                     if (totalFound === 0 && parsedNumbers.length >= 3) totalFound = parsedNumbers[2];
@@ -781,7 +783,7 @@
                         totalFound = unitsFound * navFound;
                     }
 
-                    // แสดงผลบนฟอร์ม
+                    // แสดงค่าบนฟอร์ม
                     document.getElementById('ocrPlanName').value = detectedPlan;
                     document.getElementById('ocrUnits').value = unitsFound > 0 ? unitsFound : '';
                     document.getElementById('ocrNav').value = navFound > 0 ? navFound : '';
