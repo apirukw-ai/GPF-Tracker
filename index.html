@@ -412,15 +412,31 @@
                 const profit = fVal - fCost;                              
                 const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0; 
 
-                const prevNav = f.prevNav || f.currentNav;
+                // 1. แก้ไขคำนวณกำไรวันนี้: ถ้าไม่มี prevNav ให้ fallback ไปใช้ avgNav แทนการใช้ currentNav
+                const prevNav = (f.prevNav !== undefined && f.prevNav !== null) ? f.prevNav : f.avgNav;
                 const fValYesterday = f.units * prevNav;                 
                 const todayProfitBaht = fVal - fValYesterday;            
-                const todayProfitPct = fVal > 0 ? (todayProfitBaht * 100) / fVal : 0; 
+                const todayProfitPct = fValYesterday > 0 ? (todayProfitBaht * 100) / fValYesterday : 0; 
 
-                const startOfYearNav = f.ytdNav || f.avgNav;
-                const fValYtdStart = f.units * startOfYearNav;            
-                const ytdProfitBaht = fVal - fValYtdStart;               
-                const ytdProfitPct = fValYtdStart > 0 ? (ytdProfitBaht / fValYtdStart) * 100 : (f.ytdPct || 0);
+                // 2. แก้ไขคำนวณ YTD: รองรับกรณีมี f.ytdPct โดยตรง แบบเดียวกับหุ้นต่างประเทศ
+                let ytdProfitPct = 0;
+                let ytdProfitBaht = 0;
+                let fValYtdStart = 0;
+
+                if (f.ytdPct !== undefined && f.ytdPct !== null) {
+                    ytdProfitPct = f.ytdPct;
+                    ytdProfitBaht = (fVal * ytdProfitPct) / (100 + ytdProfitPct);
+                    fValYtdStart = fVal - ytdProfitBaht;
+                } else if (f.ytdNav) {
+                    fValYtdStart = f.units * f.ytdNav;            
+                    ytdProfitBaht = fVal - fValYtdStart;               
+                    ytdProfitPct = fValYtdStart > 0 ? (ytdProfitBaht / fValYtdStart) * 100 : 0;
+                } else {
+                    // หากไม่มีทั้ง ytdPct และ ytdNav ให้คำนวณเปรียบเทียบจาก NAV ต้นทุน
+                    fValYtdStart = fCost;
+                    ytdProfitBaht = profit;
+                    ytdProfitPct = profitPct;
+                }
 
                 totalVal += fVal;
                 totalCost += fCost;
@@ -699,50 +715,30 @@ async function processPdfStatement(event) {
             fullText += pageText + "\n";
         }
 
-        // ... โค้ดส่วนดึง cleanText ก่อนหน้า ...
-
-
-        // --- เพิ่มโค้ด Debug บล็อกเปลี่ยนแผนการลงทุน เข้า ตามที่ระบุ ---
         const cleanText = fullText.replace(/\s+/g, ' ');
 
-console.log(
-    cleanText.substring(
-        cleanText.indexOf("13 ก ร ก ฎ า ค ม"),
-        cleanText.indexOf("16 ก ร ก ฎ า ค ม")
-    )
-);
-
-
-        // --------------------------------------------------------
+        console.log(
+            cleanText.substring(
+                cleanText.indexOf("13 ก ร ก ฎ า ค ม"),
+                cleanText.indexOf("16 ก ร ก ฎ า ค ม")
+            )
+        );
 
         // ลบช่องว่างระหว่างอักษรภาษาไทยเพื่อให้ค้นหาชื่อแผนได้อย่างแม่นยำ
         let compactText = cleanText;
 
-for (let i = 0; i < 20; i++) {
-    compactText = compactText.replace(
-        /([ก-๙])\s+([ก-๙])/g,
-        '$1$2'
-    );
-}
+        for (let i = 0; i < 20; i++) {
+            compactText = compactText.replace(
+                /([ก-๙])\s+([ก-๙])/g,
+                '$1$2'
+            );
+        }
 
-        console.log(
-    compactText.includes("หุ้นไทย")
-);
-
-        
         console.log("COMPACT TEXT =", compactText);
+        console.log(compactText.includes("หุ้นไทย"));
+        console.log(compactText.includes("อสังหาริมทรัพย์"));
+        console.log(compactText.includes("ต่างประเทศ"));
 
-console.log(
-    compactText.includes("หุ้นไทย")
-);
-
-console.log(
-    compactText.includes("อสังหาริมทรัพย์")
-);
-
-console.log(
-    compactText.includes("ต่างประเทศ")
-);
         const planTargets = [
             { id: "gpf_thai", key: "แผนหุ้นไทย", altKey: "หุ้นไทย" },
             { id: "gpf_prop", key: "แผนกองทุนอสังหาริมทรัพย์ไทย", altKey: "อสังหาริมทรัพย์" },
@@ -756,19 +752,16 @@ console.log(
             const fund = funds.find(f => f.id === target.id || f.code.includes(target.altKey));
             if (!fund) return;
 
-            // ค้นหาข้อความใน switchBlock ที่สกัดออกมา
             const regex = new RegExp(target.altKey + "[\\s\\S]*?([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{4})\\s+([\\d,]+\\.\\d{2})", "g");
             
             let match;
-let lastCostNav = 0;
-let lastUnits = 0;
+            let lastCostNav = 0;
+            let lastUnits = 0;
 
-while ((match = regex.exec(compactText)) !== null) {
-
-    
-    lastCostNav = parseFloat(match[1].replace(/,/g, ''));
-    lastUnits = parseFloat(match[2].replace(/,/g, ''));
-}
+            while ((match = regex.exec(compactText)) !== null) {
+                lastCostNav = parseFloat(match[1].replace(/,/g, ''));
+                lastUnits = parseFloat(match[2].replace(/,/g, ''));
+            }
                 
             if (lastCostNav > 0 && lastUnits > 0) {
                 console.log(`MATCH SUCCESS [${target.key}]: NAV = ${lastCostNav}, Units = ${lastUnits}`);
@@ -793,6 +786,7 @@ while ((match = regex.exec(compactText)) !== null) {
         event.target.value = '';
     }
 }
+
         /* ---------------- OCR Processing Engine (ช่องทางสำรอง: ดึงเฉพาะ Units) ---------------- */
         async function processOcrImage(event) {
             const file = event.target.files[0];
@@ -920,7 +914,7 @@ while ((match = regex.exec(compactText)) !== null) {
                 });
 
                 if (existingFund) {
-                    existingFund.units = units; // ✅ อัปเดตเฉพาะ units เท่านั้น
+                    existingFund.units = units; // อัปเดตเฉพาะ units เท่านั้น
                     updatedCount++;
                 }
             });
