@@ -375,37 +375,69 @@ function recalculateAvgNavs() {
         }
     });
 }
-        async function loadData() {
-            try {
-                const res = await fetch(DB_URL + '?t=' + Date.now());
-                const data = await res.json();
-                
-                if (Array.isArray(data)) {
-                    funds = data;
-                } else if (data && typeof data === 'object') {
-                    funds = data.funds || data.items || [];
-                    historyLogs = data.history || [];
-                    gpfTransactions = data.gpf_transactions || [];
+// ป้องกัน Data Wipe-out
+let isCloudLoaded = false;
 
-                    if (data.lastUpdated) {
-                        document.getElementById('lastUpdatedBadge').innerText = data.lastUpdated;
-                    }
-                } else {
-                    funds = [];
-                }
+async function loadData() {
+    try {
 
-                funds = funds.filter(f => !f.id.startsWith('fund_'));
-                
-                recalculateAvgNavs();
-                renderAll();
-            } catch (err) {
-                console.error("Load Data Error:", err);
-                // ✅ เพิ่ม 4 บรรทัดนี้ลงไป
-                funds = [];
-                historyLogs = [];
-                gpfTransactions = [];
-                renderAll();
-            }
+        const res = await fetch(
+            DB_URL + '?t=' + Date.now()
+        );
+
+        const data = await res.json();
+
+        // ตรวจสอบรูปแบบข้อมูลก่อน
+        if (!data || typeof data !== 'object') {
+
+            console.warn(
+                'Unexpected Cloud Data Format',
+                data
+            );
+
+            isCloudLoaded = false;
+            return;
+        }
+
+        funds = data.funds || data.items || [];
+        historyLogs = data.history || [];
+        gpfTransactions =
+            data.gpf_transactions || [];
+
+        if (data.lastUpdated) {
+            document.getElementById(
+                'lastUpdatedBadge'
+            ).innerText = data.lastUpdated;
+        }
+
+        // ล้างกองทุนขยะ
+        funds = funds.filter(
+            f => !f.id.startsWith('fund_')
+        );
+
+        // โหลดสำเร็จ
+        isCloudLoaded = true;
+
+        recalculateAvgNavs();
+        renderAll();
+
+    } catch (err) {
+
+        console.error(
+            "Load Data Error:",
+            err
+        );
+
+        isCloudLoaded = false;
+
+        alert(
+            "ไม่สามารถโหลดข้อมูลจาก Cloud ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่"
+        );
+
+        // ห้ามล้างข้อมูลใน memory
+        return;
+    }
+}
         }
 
         function renderAll() {
@@ -1155,6 +1187,52 @@ async function deleteFund(id) {
         }
 
         async function saveToFirebase() {
+
+    if (!isCloudLoaded) {
+
+        alert(
+            "Cloud ยังโหลดไม่สำเร็จ ระบบจะไม่บันทึกข้อมูลเพื่อป้องกันข้อมูลหาย"
+        );
+
+        return;
+    }
+
+    try {
+
+        const nowStr =
+            new Date().toLocaleDateString('th-TH')
+            + ' '
+            + new Date().toLocaleTimeString(
+                'th-TH',
+                {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }
+            )
+            + ' น.';
+
+        await fetch(DB_URL, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                funds: funds,
+                lastUpdated: nowStr,
+                history: historyLogs,
+                gpf_transactions: gpfTransactions
+            })
+        });
+
+    } catch (err) {
+
+        console.error(
+            "Save Error:",
+            err
+        );
+
+    }
+}
             try {
                 const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
                 await fetch(DB_URL, {
