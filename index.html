@@ -780,16 +780,22 @@ function recalculateAvgNavs() {
                             }
 
                             // ❌ จุดนี้คือโค้ดเก่าที่ไม่มีการเช็คซ้ำ
-                            gpfTransactions.push({
-                                fundId: fund.id,
-                                date: docDate,
-                                type: 'PDF_SNAPSHOT',
-                                plan: rule.keywords[0],
-                                nav: pdfNav,
-                                units: pdfUnits,
-                                amount: pdfAmount
-                            });
-                        }
+                            const exists = gpfTransactions.some(t =>
+    t.type === 'PDF_SNAPSHOT' &&
+    t.fundId === fund.id &&
+    t.date === docDate
+);
+ if (!exists) {
+    gpfTransactions.push({
+        fundId: fund.id,
+        date: docDate,
+        type: 'PDF_SNAPSHOT',
+        plan: rule.keywords[0],
+        nav: pdfNav,
+        units: pdfUnits,
+        amount: pdfAmount
+    });
+}
                     }
                 });
 
@@ -992,15 +998,15 @@ PDF PARSER (EXPERIMENTAL)
                 if (!planName || units === 0) return;
 
                 // 1. เพิ่มรายการลง gpf_transactions (บันทึก type ตามที่เลือก)
-                gpfTransactions.push({
-                    fundId: fundId,
-                    date: todayStr,
-                    type: ocrType, 
-                    plan: planName,
-                    nav: nav,
-                    units: units,
-                    amount: amount
-                });
+ gpfTransactions.push({
+    fundId: fundId,
+    date: todayStr,
+    type: ocrType,
+    plan: planName,
+    nav: nav,
+    units: units,
+    amount: amount
+});
 
                 // 2. Owner: OCR อัปเดต units
                 const fund = funds.find(f => f.id === fundId || f.code.includes(planName));
