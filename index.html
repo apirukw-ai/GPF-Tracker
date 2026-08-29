@@ -221,14 +221,14 @@
                 <thead>
                     <tr>
                         <th>ชื่อแผนลงทุน</th>
-                        <th class="text-right align-top">NAV ต้นทุนถัวเฉลี่ย<br><span class="text-[10px] font-normal text-amber-500/80">(calc: avgNav)</span></th>
-                        <th class="text-right align-top">NAV ปัจจุบัน<br><span class="text-[10px] font-normal text-amber-500/80">(Auto NAV)</span></th>
-                        <th class="text-right align-top">จำนวนหน่วยสะสม<br><span class="text-[10px] font-normal text-amber-500/80">(PDF/OCR)</span></th>
-                        <th class="text-right align-top">มูลค่าปัจจุบัน</th>
-                        <th class="text-right align-top">กำไรทุนสะสม</th>
-                        <th class="text-right align-top">กำไรวันนี้</th>
-                        <th class="text-right align-top">ผลงานตั้งแต่ต้นปี<br><span class="text-[10px] font-normal text-amber-500/80">(YTD)</span></th>
-                        <th class="text-center align-top">จัดการ</th>
+                        <th class="text-right">NAV ต้นทุนถัวเฉลี่ย (calc: avgNav)</th>
+                        <th class="text-right">NAV ปัจจุบัน (Auto NAV)</th>
+                        <th class="text-right">จำนวนหน่วยสะสม (PDF/OCR)</th>
+                        <th class="text-right">มูลค่าปัจจุบัน</th>
+                        <th class="text-right">กำไรทุนสะสม</th>
+                        <th class="text-right">กำไรวันนี้</th>
+                        <th class="text-right">ผลงานตั้งแต่ต้นปี (YTD)</th>
+                        <th class="text-center">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="fundTableBody" class="text-xs"></tbody>
@@ -375,69 +375,37 @@ function recalculateAvgNavs() {
         }
     });
 }
-// ป้องกัน Data Wipe-out
-let isCloudLoaded = false;
+        async function loadData() {
+            try {
+                const res = await fetch(DB_URL + '?t=' + Date.now());
+                const data = await res.json();
+                
+                if (Array.isArray(data)) {
+                    funds = data;
+                } else if (data && typeof data === 'object') {
+                    funds = data.funds || data.items || [];
+                    historyLogs = data.history || [];
+                    gpfTransactions = data.gpf_transactions || [];
 
-async function loadData() {
-    try {
+                    if (data.lastUpdated) {
+                        document.getElementById('lastUpdatedBadge').innerText = data.lastUpdated;
+                    }
+                } else {
+                    funds = [];
+                }
 
-        const res = await fetch(
-            DB_URL + '?t=' + Date.now()
-        );
-
-        const data = await res.json();
-
-        // ตรวจสอบรูปแบบข้อมูลก่อน
-        if (!data || typeof data !== 'object') {
-
-            console.warn(
-                'Unexpected Cloud Data Format',
-                data
-            );
-
-            isCloudLoaded = false;
-            return;
-        }
-
-        funds = data.funds || data.items || [];
-        historyLogs = data.history || [];
-        gpfTransactions =
-            data.gpf_transactions || [];
-
-        if (data.lastUpdated) {
-            document.getElementById(
-                'lastUpdatedBadge'
-            ).innerText = data.lastUpdated;
-        }
-
-        // ล้างกองทุนขยะ
-        funds = funds.filter(
-            f => !f.id.startsWith('fund_')
-        );
-
-        // โหลดสำเร็จ
-        isCloudLoaded = true;
-
-        recalculateAvgNavs();
-        renderAll();
-
-    } catch (err) {
-
-        console.error(
-            "Load Data Error:",
-            err
-        );
-
-        isCloudLoaded = false;
-
-        alert(
-            "ไม่สามารถโหลดข้อมูลจาก Cloud ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่"
-        );
-
-        // ห้ามล้างข้อมูลใน memory
-        return;
-    }
-}
+                funds = funds.filter(f => !f.id.startsWith('fund_'));
+                
+                recalculateAvgNavs();
+                renderAll();
+            } catch (err) {
+                console.error("Load Data Error:", err);
+                // ✅ เพิ่ม 4 บรรทัดนี้ลงไป
+                funds = [];
+                historyLogs = [];
+                gpfTransactions = [];
+                renderAll();
+            }
         }
 
         function renderAll() {
@@ -744,7 +712,7 @@ async function loadData() {
         /* ---------------- Owner: PDF Snapshot Import (Owner: units) ----------------
            อ่านอัปเดต fund.units และสร้าง gpf_transactions (ห้ามแตะ currentNav และ avgNav)
         -------------------------------------------------------------------------- */
- async function processPdfSnapshot(event) {
+        async function processPdfSnapshot(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -767,7 +735,7 @@ async function loadData() {
                     compactText = compactText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
                 }
 
-                // เพิ่ม Mapping เดือนภาษาไทย
+// เพิ่ม Mapping เดือนภาษาไทย
                 const THAI_MONTHS = {
                     "มกราคม":"01", "กุมภาพันธ์":"02", "มีนาคม":"03", "เมษายน":"04",
                     "พฤษภาคม":"05", "มิถุนายน":"06", "กรกฎาคม":"07", "สิงหาคม":"08",
@@ -784,7 +752,7 @@ async function loadData() {
                     const month = THAI_MONTHS[monthStr] || "01";
                     const yearEN = yearTH > 2500 ? yearTH - 543 : yearTH;
                     
-                    docDate = `${yearEN}-${month}-${day}`;
+                    docDate = `${yearEN}-${month}-${day}`; // จะได้ 2026-08-26 เป๊ะๆ
                 }
 
                 let updatedCount = 0;
@@ -797,8 +765,8 @@ async function loadData() {
                     const regex = new RegExp(`แผน${rule.keywords[0]}[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{2})`, "g");
                     const match = regex.exec(compactText);
 
-                    // แก้ไข: นำ if (match) ที่ซ้ำซ้อนออก และเพิ่มปีกกาปิดให้ครบถ้วน
                     if (match) {
+ if (match) {
                         const pdfUnits = parseFloat(match[1].replace(/,/g, ''));
                         const pdfNav = parseFloat(match[2].replace(/,/g, ''));
                         const pdfAmount = parseFloat(match[3].replace(/,/g, ''));
@@ -811,24 +779,23 @@ async function loadData() {
                                 navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF Snapshot NAV (${pdfNav.toFixed(4)}) ไม่ตรงกับ Auto NAV (${fund.currentNav.toFixed(4)})`);
                             }
 
+                            // ❌ จุดนี้คือโค้ดเก่าที่ไม่มีการเช็คซ้ำ
                             const exists = gpfTransactions.some(t =>
-                                t.type === 'PDF_SNAPSHOT' &&
-                                t.fundId === fund.id &&
-                                t.date === docDate
-                            );
-                            
-                            if (!exists) {
-                                gpfTransactions.push({
-                                    fundId: fund.id,
-                                    date: docDate,
-                                    type: 'PDF_SNAPSHOT',
-                                    plan: rule.keywords[0],
-                                    nav: pdfNav,
-                                    units: pdfUnits,
-                                    amount: pdfAmount
-                                });
-                            }
-                        }
+    t.type === 'PDF_SNAPSHOT' &&
+    t.fundId === fund.id &&
+    t.date === docDate
+);
+ if (!exists) {
+    gpfTransactions.push({
+        fundId: fund.id,
+        date: docDate,
+        type: 'PDF_SNAPSHOT',
+        plan: rule.keywords[0],
+        nav: pdfNav,
+        units: pdfUnits,
+        amount: pdfAmount
+    });
+}
                     }
                 });
 
@@ -853,6 +820,7 @@ async function loadData() {
                 event.target.value = '';
             }
         }
+
 /*
 ======================================
 PDF PARSER (EXPERIMENTAL)
@@ -1187,52 +1155,6 @@ async function deleteFund(id) {
         }
 
         async function saveToFirebase() {
-
-    if (!isCloudLoaded) {
-
-        alert(
-            "Cloud ยังโหลดไม่สำเร็จ ระบบจะไม่บันทึกข้อมูลเพื่อป้องกันข้อมูลหาย"
-        );
-
-        return;
-    }
-
-    try {
-
-        const nowStr =
-            new Date().toLocaleDateString('th-TH')
-            + ' '
-            + new Date().toLocaleTimeString(
-                'th-TH',
-                {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }
-            )
-            + ' น.';
-
-        await fetch(DB_URL, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                funds: funds,
-                lastUpdated: nowStr,
-                history: historyLogs,
-                gpf_transactions: gpfTransactions
-            })
-        });
-
-    } catch (err) {
-
-        console.error(
-            "Save Error:",
-            err
-        );
-
-    }
-}
             try {
                 const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
                 await fetch(DB_URL, {
