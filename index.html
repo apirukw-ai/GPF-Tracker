@@ -712,7 +712,7 @@ function recalculateAvgNavs() {
         /* ---------------- Owner: PDF Snapshot Import (Owner: units) ----------------
            อ่านอัปเดต fund.units และสร้าง gpf_transactions (ห้ามแตะ currentNav และ avgNav)
         -------------------------------------------------------------------------- */
-        async function processPdfSnapshot(event) {
+ async function processPdfSnapshot(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -735,7 +735,7 @@ function recalculateAvgNavs() {
                     compactText = compactText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
                 }
 
-// เพิ่ม Mapping เดือนภาษาไทย
+                // เพิ่ม Mapping เดือนภาษาไทย
                 const THAI_MONTHS = {
                     "มกราคม":"01", "กุมภาพันธ์":"02", "มีนาคม":"03", "เมษายน":"04",
                     "พฤษภาคม":"05", "มิถุนายน":"06", "กรกฎาคม":"07", "สิงหาคม":"08",
@@ -752,7 +752,7 @@ function recalculateAvgNavs() {
                     const month = THAI_MONTHS[monthStr] || "01";
                     const yearEN = yearTH > 2500 ? yearTH - 543 : yearTH;
                     
-                    docDate = `${yearEN}-${month}-${day}`; // จะได้ 2026-08-26 เป๊ะๆ
+                    docDate = `${yearEN}-${month}-${day}`;
                 }
 
                 let updatedCount = 0;
@@ -765,8 +765,8 @@ function recalculateAvgNavs() {
                     const regex = new RegExp(`แผน${rule.keywords[0]}[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{2})`, "g");
                     const match = regex.exec(compactText);
 
+                    // แก้ไข: นำ if (match) ที่ซ้ำซ้อนออก และเพิ่มปีกกาปิดให้ครบถ้วน
                     if (match) {
- if (match) {
                         const pdfUnits = parseFloat(match[1].replace(/,/g, ''));
                         const pdfNav = parseFloat(match[2].replace(/,/g, ''));
                         const pdfAmount = parseFloat(match[3].replace(/,/g, ''));
@@ -779,23 +779,24 @@ function recalculateAvgNavs() {
                                 navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF Snapshot NAV (${pdfNav.toFixed(4)}) ไม่ตรงกับ Auto NAV (${fund.currentNav.toFixed(4)})`);
                             }
 
-                            // ❌ จุดนี้คือโค้ดเก่าที่ไม่มีการเช็คซ้ำ
                             const exists = gpfTransactions.some(t =>
-    t.type === 'PDF_SNAPSHOT' &&
-    t.fundId === fund.id &&
-    t.date === docDate
-);
- if (!exists) {
-    gpfTransactions.push({
-        fundId: fund.id,
-        date: docDate,
-        type: 'PDF_SNAPSHOT',
-        plan: rule.keywords[0],
-        nav: pdfNav,
-        units: pdfUnits,
-        amount: pdfAmount
-    });
-}
+                                t.type === 'PDF_SNAPSHOT' &&
+                                t.fundId === fund.id &&
+                                t.date === docDate
+                            );
+                            
+                            if (!exists) {
+                                gpfTransactions.push({
+                                    fundId: fund.id,
+                                    date: docDate,
+                                    type: 'PDF_SNAPSHOT',
+                                    plan: rule.keywords[0],
+                                    nav: pdfNav,
+                                    units: pdfUnits,
+                                    amount: pdfAmount
+                                });
+                            }
+                        }
                     }
                 });
 
@@ -820,7 +821,6 @@ function recalculateAvgNavs() {
                 event.target.value = '';
             }
         }
-
 /*
 ======================================
 PDF PARSER (EXPERIMENTAL)
