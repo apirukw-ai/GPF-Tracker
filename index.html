@@ -402,14 +402,6 @@ async function loadData() {
             } catch (err) {
                 console.error("Load Data Error:", err);
                 alert("เกิดข้อผิดพลาดในการโหลดข้อมูล ระบบจะแสดงผลข้อมูลเท่าที่มีในหน่วยความจำ");
-                // นำการเคลียร์ Array (funds = []) ออกจากจุดนี้
-            }
-        }
-                // ✅ เพิ่ม 4 บรรทัดนี้ลงไป
-                funds = [];
-                historyLogs = [];
-                gpfTransactions = [];
-                renderAll();
             }
         }
 
