@@ -361,8 +361,8 @@ function recalculateAvgNavs() {
 
     funds.forEach(fund => {
         // กรองเอาเฉพาะ Transaction ที่มีผลกับต้นทุน (ไม่เอา PDF_SNAPSHOT มาถัวเฉลี่ย)
-        const planTxns = gpfTransactions.filter(
-            t => t.fundId === fund.id && t.type !== 'PDF_SNAPSHOT'
+ const planTxns = gpfTransactions.filter(
+            t => t.fundId === fund.id && t.type !== 'PDF_SNAPSHOT' && t.type !== 'OCR_SNAPSHOT'
         );
 
         if (planTxns.length > 0) {
@@ -735,10 +735,24 @@ function recalculateAvgNavs() {
                     compactText = compactText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
                 }
 
+// เพิ่ม Mapping เดือนภาษาไทย
+                const THAI_MONTHS = {
+                    "มกราคม":"01", "กุมภาพันธ์":"02", "มีนาคม":"03", "เมษายน":"04",
+                    "พฤษภาคม":"05", "มิถุนายน":"06", "กรกฎาคม":"07", "สิงหาคม":"08",
+                    "กันยายน":"09", "ตุลาคม":"10", "พฤศจิกายน":"11", "ธันวาคม":"12"
+                };
+
                 let docDate = new Date().toISOString().slice(0, 10);
                 const dateMatch = compactText.match(/ณ\s*วันที่\s*(\d{1,2})\s*([ก-๙]+)\s*(\d{4})/);
                 if (dateMatch) {
-                    docDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+                    const day = dateMatch[1].padStart(2, '0');
+                    const monthStr = dateMatch[2];
+                    const yearTH = parseInt(dateMatch[3]);
+                    
+                    const month = THAI_MONTHS[monthStr] || "01";
+                    const yearEN = yearTH > 2500 ? yearTH - 543 : yearTH;
+                    
+                    docDate = `${yearEN}-${month}-${day}`; // จะได้ 2026-08-26 เป๊ะๆ
                 }
 
                 let updatedCount = 0;
@@ -752,25 +766,24 @@ function recalculateAvgNavs() {
                     const match = regex.exec(compactText);
 
                     if (match) {
+ if (match) {
                         const pdfUnits = parseFloat(match[1].replace(/,/g, ''));
                         const pdfNav = parseFloat(match[2].replace(/,/g, ''));
                         const pdfAmount = parseFloat(match[3].replace(/,/g, ''));
 
-// ในฟังก์ชัน processPdfSnapshot()
                         if (pdfUnits > 0) {
-                            fund.units = pdfUnits; // ✅ Owner: PDF Snapshot อัปเดต fund.units
+                            fund.units = pdfUnits; 
                             updatedCount++;
 
-                            // ตรวจสอบ NAV ว่าตรงกับระบบเว็บ กบข. (currentNav) หรือไม่
                             if (pdfNav > 0 && Math.abs(pdfNav - fund.currentNav) > 0.0001) {
                                 navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF Snapshot NAV (${pdfNav.toFixed(4)}) ไม่ตรงกับ Auto NAV (${fund.currentNav.toFixed(4)})`);
                             }
 
-                            // เพิ่มลง gpf_transactions เพื่อเก็บประวัติ (แต่จะไม่ถูกดึงไปคิด avgNav)
+                            // ❌ จุดนี้คือโค้ดเก่าที่ไม่มีการเช็คซ้ำ
                             gpfTransactions.push({
                                 fundId: fund.id,
                                 date: docDate,
-                                type: 'PDF_SNAPSHOT', // ✅ ระบุชัดเจนว่านี่คือ Snapshot
+                                type: 'PDF_SNAPSHOT',
                                 plan: rule.keywords[0],
                                 nav: pdfNav,
                                 units: pdfUnits,
@@ -923,7 +936,15 @@ PDF PARSER (EXPERIMENTAL)
                                 <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
                                 <input type="hidden" id="ocrFundId_${index}" value="${item.fundId || ''}">
                             </div>
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-4 gap-2">
+                                <div class="col-span-4 sm:col-span-1">
+                                    <label class="text-gray-400 text-[10px]">ประเภท:</label>
+                                    <select id="ocrType_${index}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-400 text-[11px] font-bold outline-none">
+                                        <option value="OCR_BUY">ซื้อ/สลับเข้า (+)</option>
+                                        <option value="OCR_SNAPSHOT">ยอดสะสมล่าสุด (=)</option>
+                                    </select>
+                                </div>
+                                <!-- ... (ช่อง NAV, Units, Amount ไว้เหมือนเดิม) ... -->
                                 <div>
                                     <label class="text-gray-400 text-[10px]">NAV วันซื้อ:</label>
                                     <input type="number" step="0.0001" id="ocrNav_${index}" value="${item.nav || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-semibold outline-none focus:border-amber-500">
@@ -959,36 +980,40 @@ PDF PARSER (EXPERIMENTAL)
             const todayStr = new Date().toISOString().slice(0, 10);
             let updatedCount = 0;
 
-            detectedOcrPlans.forEach((_, index) => {
+ detectedOcrPlans.forEach((_, index) => {
                 const planName = document.getElementById(`ocrPlanName_${index}`).value;
                 let fundId = document.getElementById(`ocrFundId_${index}`).value || getFundIdByPlanName(planName);
                 const nav = parseFloat(document.getElementById(`ocrNav_${index}`).value) || 0;
                 const units = parseFloat(document.getElementById(`ocrUnits_${index}`).value) || 0;
                 const amount = parseFloat(document.getElementById(`ocrAmount_${index}`).value) || (nav * units);
+                
+                const ocrType = document.getElementById(`ocrType_${index}`).value; // ✅ ดึงประเภทที่เลือก
 
-// ในฟังก์ชัน applyOcrData()
                 if (!planName || units === 0) return;
 
-                // 1. เพิ่มรายการลง gpf_transactions (Append-Only)
+                // 1. เพิ่มรายการลง gpf_transactions (บันทึก type ตามที่เลือก)
                 gpfTransactions.push({
                     fundId: fundId,
                     date: todayStr,
-                    type: 'OCR_BUY', // ✅ ระบุชัดเจนว่ามาจาก OCR (ซื้อเพิ่ม)
+                    type: ocrType, 
                     plan: planName,
                     nav: nav,
                     units: units,
                     amount: amount
                 });
 
-                // 2. Owner: OCR อัปเดตเฉพาะ units สะสมเข้าพอร์ต
+                // 2. Owner: OCR อัปเดต units
                 const fund = funds.find(f => f.id === fundId || f.code.includes(planName));
                 if (fund) {
-                    fund.units += units; // ✅ บวกหน่วยเพิ่ม
+                    if (ocrType === 'OCR_BUY') {
+                        fund.units += units; // ซื้อเพิ่ม ให้บวกของเดิม
+                    } else {
+                        fund.units = units; // Snapshot ให้ทับค่าเดิม
+                    }
                 }
 
                 updatedCount++;
             });
-
             // 3. recalculateAvgNavs() คำนวณ avgNav จาก gpf_transactions
             recalculateAvgNavs();
 
@@ -1047,16 +1072,15 @@ function openFundModal(id = null) {
             const units = parseFloat(document.getElementById('inputUnits').value) || 0;
             const targetPct = parseFloat(document.getElementById('inputTargetPct').value) || 0;
 
-            if (id) {
+           if (id) {
                 const f = funds.find(item => item.id === id);
                 if (f) {
                     f.code = code;
-                    f.avgNav = avgNav;
+                    // ลบ f.avgNav = avgNav; ทิ้งไปเลย เพื่อบังคับใช้จาก Transaction เท่านั้น
                     f.currentNav = currentNav;
                     f.units = units;
                     f.targetPct = targetPct;
                 }
-  // โค้ดเดิม
             } else {
                 const newFundId = 'gpf_fund_' + Date.now();
                 funds.push({
