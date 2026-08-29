@@ -375,7 +375,7 @@ function recalculateAvgNavs() {
         }
     });
 }
-        async function loadData() {
+async function loadData() {
             try {
                 const res = await fetch(DB_URL + '?t=' + Date.now());
                 const data = await res.json();
@@ -394,12 +394,17 @@ function recalculateAvgNavs() {
                     funds = [];
                 }
 
-                funds = funds.filter(f => !f.id.startsWith('fund_'));
+                // ป้องกัน Error หาก f.id เป็น undefined
+                funds = funds.filter(f => f && f.id && !f.id.startsWith('fund_'));
                 
                 recalculateAvgNavs();
                 renderAll();
             } catch (err) {
                 console.error("Load Data Error:", err);
+                alert("เกิดข้อผิดพลาดในการโหลดข้อมูล ระบบจะแสดงผลข้อมูลเท่าที่มีในหน่วยความจำ");
+                // นำการเคลียร์ Array (funds = []) ออกจากจุดนี้
+            }
+        }
                 // ✅ เพิ่ม 4 บรรทัดนี้ลงไป
                 funds = [];
                 historyLogs = [];
@@ -457,21 +462,25 @@ function recalculateAvgNavs() {
                 fundLabels.push(f.code);
                 fundProfitPcts.push(parseFloat(profitPct.toFixed(2)));
 
+// ดักจับค่า undefined ก่อนนำไปคำนวณหรือแสดงผล
+                const safeAvgNav = f.avgNav || 0;
+                const safeCurrentNav = f.currentNav || 0;
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${getPlanBadge(f.code)}</td>
-                    <td class="text-right font-semibold text-amber-300">฿${f.avgNav.toFixed(4)}</td>
-                    <td class="text-right text-gold font-bold">฿${f.currentNav.toFixed(4)}</td>
-                    <td class="text-right font-bold text-emerald-400">${f.units.toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
+                    <td class="text-right font-semibold text-amber-300">฿${safeAvgNav.toFixed(4)}</td>
+                    <td class="text-right text-gold font-bold">฿${safeCurrentNav.toFixed(4)}</td>
+                    <td class="text-right font-bold text-emerald-400">${(f.units || 0).toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
                     <td class="text-right font-semibold text-white">฿${formatNum(fVal)}</td>
                     <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'} font-medium">
-                        ${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${profitPct.toFixed(2)}%)
+                        ${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${(profitPct || 0).toFixed(2)}%)
                     </td>
                     <td class="text-right ${todayProfitBaht >= 0 ? 'text-green' : 'text-red'} font-medium">
-                        ${todayProfitBaht >= 0 ? '+' : ''}฿${formatNum(todayProfitBaht)} (${todayProfitPct >= 0 ? '+' : ''}${todayProfitPct.toFixed(2)}%)
+                        ${todayProfitBaht >= 0 ? '+' : ''}฿${formatNum(todayProfitBaht)} (${todayProfitPct >= 0 ? '+' : ''}${(todayProfitPct || 0).toFixed(2)}%)
                     </td>
                     <td class="text-right ${ytdProfitBaht >= 0 ? 'text-green' : 'text-red'} font-medium">
-                        ${ytdProfitBaht >= 0 ? '+' : ''}฿${formatNum(ytdProfitBaht)} (${ytdProfitPct >= 0 ? '+' : ''}${ytdProfitPct.toFixed(2)}%)
+                        ${ytdProfitBaht >= 0 ? '+' : ''}฿${formatNum(ytdProfitBaht)} (${ytdProfitPct >= 0 ? '+' : ''}${(ytdProfitPct || 0).toFixed(2)}%)
                     </td>
                     <td class="text-center">
                         <button onclick="openFundModal('${f.id}')" class="btn btn-dark p-1 rounded text-gold mr-1"><i class="fa-solid fa-pen text-[10px]"></i></button>
