@@ -221,9 +221,9 @@
                 <thead>
                     <tr>
                         <th>ชื่อแผนลงทุน</th>
-                        <th class="text-right align-top">NAV ต้นทุนถัวเฉลี่ย<br><span class="text-[10px] font-normal text-amber-500/80">(calc: avgNav)</span></th>
+                        <th class="text-right align-top">จำนวนหน่วย<br><span class="text-[10px] font-normal text-amber-500/80">(PDF/OCR)</span></th>
+                        <th class="text-right align-top">NAV ต้นทุน<br><span class="text-[10px] font-normal text-amber-500/80">(calc: avgNav)</span></th>
                         <th class="text-right align-top">NAV ปัจจุบัน<br><span class="text-[10px] font-normal text-amber-500/80">(Auto NAV)</span></th>
-                        <th class="text-right align-top">จำนวนหน่วยสะสม<br><span class="text-[10px] font-normal text-amber-500/80">(PDF/OCR)</span></th>
                         <th class="text-right align-top">มูลค่าปัจจุบัน</th>
                         <th class="text-right align-top">กำไรทุนสะสม</th>
                         <th class="text-right align-top">กำไรวันนี้</th>
@@ -461,9 +461,9 @@ async function loadData() {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${getPlanBadge(f.code)}</td>
+                    <td class="text-right font-bold text-emerald-400">${(f.units || 0).toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
                     <td class="text-right font-semibold text-amber-300">฿${safeAvgNav.toFixed(4)}</td>
                     <td class="text-right text-gold font-bold">฿${safeCurrentNav.toFixed(4)}</td>
-                    <td class="text-right font-bold text-emerald-400">${(f.units || 0).toLocaleString('th-TH', {minimumFractionDigits:4})}</td>
                     <td class="text-right font-semibold text-white">฿${formatNum(fVal)}</td>
                     <td class="text-right ${profit >= 0 ? 'text-green' : 'text-red'} font-medium">
                         ${profit >= 0 ? '+' : ''}฿${formatNum(profit)} (${(profitPct || 0).toFixed(2)}%)
