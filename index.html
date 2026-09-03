@@ -535,62 +535,92 @@ async function loadData() {
         }
 
         function renderTrendLineChart() {
-            const ctx = document.getElementById('trendLineChart').getContext('2d');
-            if (lineChartInstance) lineChartInstance.destroy();
+    const ctx = document.getElementById('trendLineChart').getContext('2d');
+    if (lineChartInstance) lineChartInstance.destroy();
 
-            let labels = historyLogs.map(l => l.timestamp ? l.timestamp.split(' ')[0] : '');
-            let dataValues = historyLogs.map(l => l.totalVal);
+    // 📍 1. ดึงข้อมูล วันที่, มูลค่าพอร์ต และ ต้นทุนสะสม จาก historyLogs
+    let labels = historyLogs.map(l => l.timestamp ? l.timestamp.split(' ')[0] : '');
+    let dataValues = historyLogs.map(l => l.totalVal);
+    let costValues = historyLogs.map(l => l.totalCost !== undefined ? l.totalCost : (l.totalVal - (l.totalProfit || 0)));
 
-            if (historyLogs.length === 0) {
-                const nowStr = new Date().toLocaleDateString('th-TH');
-                const totalVal = funds.reduce((acc, f) => acc + (f.units * f.currentNav), 0);
-                labels = [nowStr];
-                dataValues = [totalVal];
-            }
+    // กรณีที่ยังไม่มีประวัติในระบบเลย
+    if (historyLogs.length === 0) {
+        const nowStr = new Date().toLocaleDateString('th-TH');
+        const totalVal = funds.reduce((acc, f) => acc + (f.units * f.currentNav), 0);
+        const totalCost = funds.reduce((acc, f) => acc + (f.units * (f.costNav || f.currentNav)), 0);
+        
+        labels = [nowStr];
+        dataValues = [totalVal];
+        costValues = [totalCost];
+    }
 
-            lineChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'มูลค่าพอร์ตรวม (บาท)',
-                        data: dataValues,
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                        fill: true,
-                        tension: 0.35,
-                        pointBackgroundColor: '#f59e0b',
-                        pointBorderColor: '#ffffff',
-                        pointHoverRadius: 6,
-                        pointRadius: 4,
-                        borderWidth: 2.5
-                    }]
+    lineChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'มูลค่าพอร์ตรวม (บาท)',
+                    data: dataValues,
+                    borderColor: '#f59e0b', // สีส้ม/ทอง
+                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: '#f59e0b',
+                    pointBorderColor: '#ffffff',
+                    pointHoverRadius: 6,
+                    pointRadius: 4,
+                    borderWidth: 2.5
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            ticks: { 
-                                color: '#94a3b8', 
-                                font: { size: 10 },
-                                callback: (val) => '฿' + (val / 1000000).toFixed(2) + 'M'
-                            },
-                            grid: { color: '#1e293b' }
-                        },
-                        x: {
-                            ticks: { color: '#cbd5e1', font: { size: 10 } },
-                            grid: { display: false }
-                        }
+                // 📍 2. เพิ่ม Dataset สำหรับ "ต้นทุนสะสม" (เส้นประสีเทา)
+                {
+                    label: 'ต้นทุนสะสม (บาท)',
+                    data: costValues,
+                    borderColor: '#94a3b8', // สีเทา
+                    borderDash: [5, 5],      // ทำเป็นเส้นประ
+                    fill: false,
+                    tension: 0.35,
+                    pointBackgroundColor: '#94a3b8',
+                    pointBorderColor: '#ffffff',
+                    pointHoverRadius: 6,
+                    pointRadius: 4,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                // 📍 3. เปิดให้แสดง Legend เลือกดูแต่ละเส้นได้
+                legend: { 
+                    display: true,
+                    labels: { color: '#94a3b8', font: { size: 11 } }
+                },
+                datalabels: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.dataset.label}: ฿${Number(ctx.raw).toLocaleString('th-TH')}`
                     }
                 }
-            });
+            },
+            scales: {
+                y: {
+                    ticks: { 
+                        color: '#94a3b8', 
+                        font: { size: 10 },
+                        callback: (val) => '฿' + (val >= 1000000 ? (val / 1000000).toFixed(2) + 'M' : (val / 1000).toFixed(0) + 'k')
+                    },
+                    grid: { color: '#1e293b' }
+                },
+                x: {
+                    ticks: { color: '#cbd5e1', font: { size: 10 } },
+                    grid: { display: false }
+                }
+            }
         }
-
+    });
+}
         function renderProfitBarChart(labels, dataPct) {
             const ctx = document.getElementById('profitBarChart').getContext('2d');
             if (barChartInstance) barChartInstance.destroy();
