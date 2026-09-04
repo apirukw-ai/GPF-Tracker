@@ -1,4 +1,311 @@
-<script>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPF Portfolio Tracker - ระบบบันทึกพอร์ต กบข.</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#090d16">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GPF Tracker">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2953/2953361.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js & Datalabels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    
+    <!-- Tesseract.js (OCR Engine) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- PDF.js Engine (PDF Snapshot) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: #111726;
+            --border-gold: rgba(245, 158, 11, 0.4);
+            --border-subtle: #1e293b;
+            --gpf-gold: #f59e0b;
+            --text-muted: #94a3b8;
+        }
+        body { 
+            background-color: var(--bg-dark); 
+            color: #e2e8f0; 
+            font-family: system-ui, -apple-system, sans-serif; 
+        }
+        .card-gold { 
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-gold); 
+            border-radius: 0.6rem; 
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+        }
+        .card-subtle {
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-subtle); 
+            border-radius: 0.6rem; 
+        }
+        .text-gold { color: var(--gpf-gold); }
+        .text-green { color: #10b981; }
+        .text-red { color: #ef4444; }
+        .btn-gold { background-color: var(--gpf-gold); color: #000; font-weight: 700; }
+        .btn-gold:hover { background-color: #d97706; }
+        .btn-dark { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+        .btn-dark:hover { background-color: #334155; color: #fff; }
+        .btn-blue { background-color: #0284c7; color: #fff; font-weight: 600; }
+        .btn-blue:hover { background-color: #0369a1; }
+        .btn-emerald { background-color: #059669; color: #fff; font-weight: 600; }
+        .btn-emerald:hover { background-color: #047857; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.65rem 0.85rem; border-bottom: 1px solid #1e293b; }
+        th { font-weight: 700; color: #f59e0b; text-align: left; font-size: 0.8rem; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="py-6 px-4">
+
+    <div class="max-w-7xl mx-auto space-y-4">
+
+        <!-- Header Section -->
+        <header class="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#111726] p-4 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <i class="fa-solid fa-building-columns text-xl text-gold"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wide">ระบบบันทึกพอร์ต กบข. (GPF Tracker)</h1>
+                    <p class="text-xs text-gray-400">เลขที่บัญชี 4750131 <span class="text-amber-500/70">(เงื่อนไข 80:15:5)</span></p>
+                </div>
+            </div>
+
+            <!-- Sync Status Center -->
+            <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 text-xs flex items-center gap-2">
+                <span class="text-gray-400"><i class="fa-solid fa-wifi text-gold"></i> ID: <strong id="syncIdDisplay" class="text-gold">my-gpf-4750131</strong></span>
+                <span class="text-green flex items-center gap-1 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Cloud Sync
+                </span>
+            </div>
+
+            <!-- Action Buttons Right -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="document.getElementById('pdfFileInput').click()" class="btn btn-emerald px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-900/30">
+                    <i class="fa-solid fa-file-pdf"></i> PDF Snapshot Import
+                </button>
+                <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="processPdfSnapshot(event)">
+
+                <button onclick="openOcrModal()" class="btn btn-blue px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-sky-900/30">
+                    <i class="fa-solid fa-camera"></i> ปุ่มสแกนรูปสลิป (OCR)
+                </button>
+
+                <button onclick="exportCSV()" class="btn btn-dark px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-file-excel"></i> CSV</button>
+                <button onclick="openFundModal()" class="btn btn-gold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-amber-900/30"><i class="fa-solid fa-plus"></i> เพิ่มแผน</button>
+            </div>
+        </header>
+
+        <!-- Top Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="card-subtle p-3.5">
+                <p class="text-xs text-gray-400 font-medium mb-1">มูลค่าพอร์ต</p>
+                <h2 id="totalValDisplay" class="text-xl font-extrabold text-white">฿0.00</h2>
+                <p class="text-[10px] text-gray-500 mt-1">อัปเดตอัตโนมัติทุกวันทำการ</p>
+            </div>
+            <div class="card-subtle p-3.5">
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไรสะสม</p>
+                <h2 id="totalProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
+                <p id="totalProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% จากต้นทุน</p>
+            </div>
+            <div class="card-subtle p-3.5">
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไรวันนี้</p>
+                <h2 id="dailyProfitDisplay" class="text-xl font-extrabold">฿0.00</h2>
+                <p id="dailyProfitSub" class="text-[10px] text-gray-400 mt-1">0.00% วันนี้</p>
+            </div>
+            <div class="card-subtle p-3.5">
+                <p class="text-xs text-gray-400 font-medium mb-1">กำไรตั้งแต่ต้นปี (YTD)</p>
+                <h2 id="ytdProfitDisplay" class="text-xl font-extrabold text-gold">0.00% YTD</h2>
+                <p id="ytdProfitSub" class="text-[10px] text-gray-400 mt-1">เทียบกับ 1 ม.ค. 69 (฿1,340,202.52)</p>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card-subtle p-4 flex flex-col justify-between">
+                <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-chart-line"></i> แนวโน้มมูลค่าพอร์ตย้อนหลัง (PORTFOLIO VALUE TREND)
+                </h3>
+                <div class="relative w-full h-56">
+                    <canvas id="trendLineChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card-subtle p-4 flex flex-col justify-between">
+                <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-chart-column"></i> เปรียบเทียบกำไรสะสมแต่ละแผนลงทุน (%)
+                </h3>
+                <div class="relative w-full h-56">
+                    <canvas id="profitBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- History & Allocation -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card-subtle p-4 overflow-x-auto flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                        <i class="fa-solid fa-clock-rotate-left"></i> ประวัติบันทึกมูลค่าพอร์ต (PORTFOLIO HISTORY LOG)
+                    </h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>วัน-เวลา บันทึก</th>
+                                <th class="text-right">มูลค่าพอร์ตรวม</th>
+                                <th class="text-right">เปลี่ยนแปลงรายวัน</th>
+                                <th class="text-right">กำไรสะสม</th>
+                                <th class="text-center">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="text-xs"></tbody>
+                    </table>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-2 text-right">* บันทึกอัตโนมัติเมื่อระบบดึงค่า NAV ประจำวัน</p>
+            </div>
+
+            <div class="card-subtle p-4 overflow-x-auto">
+                <h3 class="text-xs font-bold text-gold mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-sliders"></i> สัดส่วนเป้าหมาย & สถานะ REBALANCE
+                </h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อแผนลงทุน</th>
+                            <th class="text-right">มูลค่าปัจจุบัน</th>
+                            <th class="text-center w-32">สัดส่วนปัจจุบัน vs เป้าหมาย</th>
+                            <th class="text-right">ส่วนต่าง (%)</th>
+                            <th class="text-center">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocTableBody" class="text-xs"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Main Funds Table -->
+        <div class="card-subtle p-3.5 overflow-x-auto">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <h3 class="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-list-ul text-gold"></i> รายการแผนลงทุนในพอร์ต
+                </h3>
+
+                <div class="bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2 shadow-sm w-fit">
+                    <i class="fa-regular fa-clock text-amber-400"></i>
+                    <span class="text-gray-300 font-medium">อัปเดต NAV ล่าสุด:</span>
+                    <strong id="lastUpdatedBadge" class="text-amber-300 font-bold tracking-wide">-</strong>
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ชื่อแผนลงทุน</th>
+                        <th class="text-right align-top">จำนวนหน่วย<br><span class="text-[10px] font-normal text-amber-500/80">(PDF/OCR)</span></th>
+                        <th class="text-right align-top">NAV ต้นทุน<br><span class="text-[10px] font-normal text-amber-500/80">(calc: avgNav)</span></th>
+                        <th class="text-right align-top">NAV ปัจจุบัน<br><span class="text-[10px] font-normal text-amber-500/80">(Auto NAV)</span></th>
+                        <th class="text-right align-top">มูลค่าปัจจุบัน</th>
+                        <th class="text-right align-top">กำไรทุนสะสม</th>
+                        <th class="text-right align-top">กำไรวันนี้</th>
+                        <th class="text-right align-top">ผลงานตั้งแต่ต้นปี<br><span class="text-[10px] font-normal text-amber-500/80">(YTD)</span></th>
+                        <th class="text-center align-top">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="fundTableBody" class="text-xs"></tbody>
+                <tfoot id="fundTableFoot" class="text-xs font-bold bg-slate-900/90 border-t-2 border-amber-500/40"></tfoot>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+    <div id="fundModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="card-gold p-5 w-full max-w-md">
+            <h3 id="modalTitle" class="text-base font-bold text-white mb-3">เพิ่ม/แก้ไขแผนลงทุน</h3>
+            <input type="hidden" id="editFundId">
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="text-gray-400">ชื่อแผนลงทุน</label>
+                    <input type="text" id="inputCode" placeholder="เช่น แผนหุ้นต่างประเทศ" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white mt-1 focus:border-amber-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-gray-400">NAV ต้นทุน (avgNav)</label>
+                        <input type="number" step="0.0001" id="inputAvgNav" placeholder="0.0000" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white mt-1 focus:border-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-amber-400 font-semibold">NAV ปัจจุบัน</label>
+                        <input type="number" step="0.0001" id="inputCurrentNav" placeholder="0.0000" class="w-full bg-slate-900 border border-amber-500/50 rounded p-2 text-gold font-bold mt-1 focus:border-amber-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-gray-400">จำนวนหน่วย (units)</label>
+                    <input type="number" step="0.0001" id="inputUnits" placeholder="0.0000" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white mt-1 focus:border-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-gray-400">สัดส่วนเป้าหมาย (%)</label>
+                    <input type="number" step="0.1" id="inputTargetPct" placeholder="0.0" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white mt-1 focus:border-amber-500 outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5">
+                <button onclick="closeFundModal()" class="btn btn-dark px-3 py-1.5 rounded text-xs">ยกเลิก</button>
+                <button onclick="saveFund()" class="btn btn-gold px-3.5 py-1.5 rounded text-xs">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ocrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="card-gold p-6 w-full max-w-xl text-center max-h-[90vh] overflow-y-auto">
+            <h3 class="text-base font-bold text-white mb-3 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-camera text-gold"></i> ปุ่มสแกนรูปสลิป (OCR)
+            </h3>
+            
+            <div class="border-2 border-dashed border-slate-700 p-4 rounded-xl mb-3 hover:border-amber-500 cursor-pointer bg-slate-900/50 transition-all" onclick="document.getElementById('fileInput').click()">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-gold mb-2"></i>
+                <p class="text-xs font-semibold text-white">คลิกเพื่อเลือกรูปภาพ หรือ Capture หน้าจอ</p>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processOcrImage(event)">
+            </div>
+
+            <div id="ocrStatusContainer" class="hidden my-3 p-3 bg-slate-900 rounded-lg border border-slate-800 text-left space-y-2">
+                <img id="ocrPreviewImg" class="max-h-36 mx-auto rounded border border-slate-700 hidden mb-2" alt="Preview">
+                <div class="flex items-center gap-2">
+                    <div id="ocrSpinner" class="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span id="ocrStatusText" class="text-xs text-amber-400 font-medium">กำลังอ่านข้อมูลจากรูปภาพ (OCR)...</span>
+                </div>
+            </div>
+
+            <div id="ocrResultForm" class="hidden text-left bg-slate-900 p-3.5 rounded-lg border border-slate-800 text-xs mb-3 space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-gold font-bold text-xs"><i class="fa-solid fa-list-check mr-1"></i> รายการสลับ/ซื้อกองทุนที่พบ:</span>
+                    <span id="ocrCountBadge" class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded border border-amber-500/40">0 รายการ</span>
+                </div>
+                <div id="ocrPlanListContainer" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
+                <button onclick="applyOcrData()" class="btn btn-gold w-full py-2.5 rounded text-xs font-bold mt-2 shadow-lg shadow-amber-900/30">บันทึกข้อมูล</button>
+            </div>
+
+            <button onclick="closeOcrModal()" class="btn btn-dark px-4 py-1.5 rounded text-xs w-full">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+
+    <script>
         const DB_URL = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json";
         const YTD_BASE_VAL = 1340202.52;
         let funds = [];
@@ -8,7 +315,6 @@
         let lineChartInstance = null;
         let detectedOcrPlans = [];
 
-        // Mapping Table จับคู่แผนกับ fundId
         const PLAN_MAPPING = [
             { keywords: ["หุ้นไทย", "SET"], fundId: "gpf_thai" },
             { keywords: ["อสังหา", "อสังหาริมทรัพย์", "REIT"], fundId: "gpf_prop" },
@@ -17,7 +323,7 @@
         ];
 
         function formatNum(num) {
-            return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return (num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function getPlanBadge(code) {
@@ -57,43 +363,38 @@
             });
         }
 
-        // 🌐 1. [NETWORK ONLY] ดึงข้อมูลสดตรงจาก Firebase เท่านั้น
         async function loadData() {
-    try {
-        console.log('START LOAD GPF DATA (Network Only)');
-        const res = await fetch(DB_URL + '?t=' + Date.now());
-        const data = await res.json();
-        
-        if (Array.isArray(data)) {
-            funds = data;
-        } else if (data && typeof data === 'object') {
-            funds = data.funds || data.items || [];
-            historyLogs = data.history || [];
-            gpfTransactions = data.gpf_transactions || [];
+            try {
+                console.log('START LOAD GPF DATA (Network Only)');
+                const res = await fetch(DB_URL + '?t=' + Date.now());
+                const data = await res.json();
+                
+                if (Array.isArray(data)) {
+                    funds = data;
+                } else if (data && typeof data === 'object') {
+                    funds = data.funds || data.items || [];
+                    historyLogs = data.history || [];
+                    gpfTransactions = data.gpf_transactions || [];
 
-            const badgeEl = document.getElementById('lastUpdatedBadge');
-            if (data.lastUpdated && badgeEl) {
-                badgeEl.innerText = data.lastUpdated;
+                    const badgeEl = document.getElementById('lastUpdatedBadge');
+                    if (data.lastUpdated && badgeEl) {
+                        badgeEl.innerText = data.lastUpdated;
+                    }
+                } else {
+                    funds = [];
+                }
+
+                funds = funds.filter(f => f && typeof f === 'object');
+                console.log('📊 Loaded funds array:', funds);
+
+                recalculateAvgNavs();
+                renderAll();
+                console.log('☁️ ดึงข้อมูล GPF สดสำเร็จ');
+            } catch (err) {
+                console.error("Load Data Error:", err);
             }
-        } else {
-            funds = [];
         }
 
-        // ❌ ปิดการฟิลเตอร์ที่เข้มเกินไป ซึ่งอาจลบข้อมูลแผนทั้งหมดจนกลายเป็น []
-        // funds = funds.filter(f => f && f.id && !f.id.startsWith('fund_'));
-
-        // ✅ กรองเฉพาะ Object ที่มีค่าจริงอยู่เท่านั้น
-        funds = funds.filter(f => f && typeof f === 'object');
-        
-        console.log('📊 Loaded funds array:', funds);
-
-        recalculateAvgNavs();
-        renderAll();
-        console.log('☁️ ดึงข้อมูล GPF สดสำเร็จ');
-    } catch (err) {
-        console.error("Load Data Error:", err);
-    }
-}
         function renderAll() {
             let totalVal = 0;
             let totalCost = 0;
@@ -101,7 +402,7 @@
             let ytdValStartSum = 0;
 
             const tableBody = document.getElementById('fundTableBody');
-            if (!tableBody) return; // 🛡️ ป้องกัน Error null จอดับ
+            if (!tableBody) return;
             tableBody.innerHTML = '';
 
             const fundLabels = [];
@@ -223,12 +524,6 @@
             const ytdSub = document.getElementById('ytdProfitSub');
             if (ytdSub) ytdSub.innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับ 1 ม.ค. 69`;
 
-            const badgeEl = document.getElementById('lastUpdatedBadge');
-            if (badgeEl && badgeEl.innerText === '-') {
-                const now = new Date();
-                badgeEl.innerText = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
-            }
-
             renderAllocation(totalVal);
             renderProfitBarChart(fundLabels, fundProfitPcts);
             renderTrendLineChart();
@@ -236,7 +531,9 @@
         }
 
         function renderTrendLineChart() {
-            const ctx = document.getElementById('trendLineChart').getContext('2d');
+            const ctxEl = document.getElementById('trendLineChart');
+            if (!ctxEl) return;
+            const ctx = ctxEl.getContext('2d');
             if (lineChartInstance) lineChartInstance.destroy();
 
             let labels = historyLogs.map(l => l.timestamp ? l.timestamp.split(' ')[0] : '');
@@ -245,8 +542,8 @@
 
             if (historyLogs.length === 0) {
                 const nowStr = new Date().toLocaleDateString('th-TH');
-                const totalVal = funds.reduce((acc, f) => acc + (f.units * f.currentNav), 0);
-                const totalCost = funds.reduce((acc, f) => acc + (f.units * (f.costNav || f.currentNav)), 0);
+                const totalVal = funds.reduce((acc, f) => acc + ((f.units || 0) * (f.currentNav || 0)), 0);
+                const totalCost = funds.reduce((acc, f) => acc + ((f.units || 0) * (f.avgNav || f.currentNav || 0)), 0);
                 
                 labels = [nowStr];
                 dataValues = [totalVal];
@@ -254,8 +551,8 @@
             }
 
             const allValues = [...dataValues, ...costValues].filter(v => v > 0);
-            const minValue = Math.min(...allValues);
-            const maxValue = Math.max(...allValues);
+            const minValue = allValues.length ? Math.min(...allValues) : 0;
+            const maxValue = allValues.length ? Math.max(...allValues) : 100;
 
             lineChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -269,10 +566,6 @@
                             backgroundColor: 'rgba(245, 158, 11, 0.12)',
                             fill: true,
                             tension: 0.35,
-                            pointBackgroundColor: '#f59e0b',
-                            pointBorderColor: '#ffffff',
-                            pointHoverRadius: 6,
-                            pointRadius: 4,
                             borderWidth: 2.5
                         },
                         {
@@ -282,10 +575,6 @@
                             borderDash: [5, 5],
                             fill: false,
                             tension: 0.35,
-                            pointBackgroundColor: '#94a3b8',
-                            pointBorderColor: '#ffffff',
-                            pointHoverRadius: 6,
-                            pointRadius: 4,
                             borderWidth: 2
                         }
                     ]
@@ -294,26 +583,14 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { 
-                            display: true,
-                            labels: { color: '#94a3b8', font: { size: 11 } }
-                        },
-                        datalabels: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => ` ${ctx.dataset.label}: ฿${Number(ctx.raw).toLocaleString('th-TH')}`
-                            }
-                        }
+                        legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
+                        datalabels: { display: false }
                     },
                     scales: {
                         y: {
                             suggestedMin: minValue * 0.95,
                             suggestedMax: maxValue * 1.05,
-                            ticks: { 
-                                color: '#94a3b8', 
-                                font: { size: 10 },
-                                callback: (val) => '฿' + (val >= 1000000 ? (val / 1000000).toFixed(2) + 'M' : (val / 1000).toFixed(0) + 'k')
-                            },
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
                             grid: { color: '#1e293b' }
                         },
                         x: {
@@ -326,14 +603,13 @@
         }
 
         function renderProfitBarChart(labels, dataPct) {
-            const ctx = document.getElementById('profitBarChart').getContext('2d');
+            const ctxEl = document.getElementById('profitBarChart');
+            if (!ctxEl) return;
+            const ctx = ctxEl.getContext('2d');
             if (barChartInstance) barChartInstance.destroy();
 
             const backgroundColors = dataPct.map(val => val >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(239, 68, 68, 0.75)');
             const borderColors = dataPct.map(val => val >= 0 ? '#10b981' : '#ef4444');
-
-            const maxVal = Math.max(...dataPct, 0);
-            const yMax = maxVal > 0 ? maxVal * 1.25 : undefined;
 
             barChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -352,7 +628,6 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: { padding: { top: 25 } },
                     plugins: {
                         legend: { display: false },
                         datalabels: {
@@ -364,15 +639,8 @@
                         }
                     },
                     scales: {
-                        y: {
-                            suggestedMax: yMax,
-                            ticks: { color: '#94a3b8', font: { size: 10 } },
-                            grid: { color: '#1e293b' }
-                        },
-                        x: {
-                            ticks: { color: '#cbd5e1', font: { size: 11, weight: '600' } },
-                            grid: { display: false }
-                        }
+                        y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
+                        x: { ticks: { color: '#cbd5e1', font: { size: 11, weight: '600' } }, grid: { display: false } }
                     }
                 }
             });
@@ -380,10 +648,11 @@
 
         function renderAllocation(totalVal) {
             const allocBody = document.getElementById('allocTableBody');
+            if (!allocBody) return;
             allocBody.innerHTML = '';
 
             funds.forEach(f => {
-                const fVal = f.units * f.currentNav;
+                const fVal = (f.units || 0) * (f.currentNav || 0);
                 const currentPct = totalVal > 0 ? (fVal / totalVal) * 100 : 0;
                 const targetPct = f.targetPct || 0;
                 const diffPct = currentPct - targetPct;
@@ -395,8 +664,6 @@
                     ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse flex items-center justify-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> ควร Rebalance</span>`
                     : `<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">สมดุล</span>`;
 
-                const barColor = isAlert ? 'bg-red-500' : 'bg-amber-500';
-
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${getPlanBadge(f.code)}</td>
@@ -407,7 +674,7 @@
                             <span>เป้าหมาย ${targetPct.toFixed(1)}%</span>
                         </div>
                         <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
-                            <div class="${barColor} h-2 rounded-full transition-all duration-500" style="width: ${progressWidth}%"></div>
+                            <div class="${isAlert ? 'bg-red-500' : 'bg-amber-500'} h-2 rounded-full transition-all duration-500" style="width: ${progressWidth}%"></div>
                         </div>
                     </td>
                     <td class="text-right ${diffPct >= 0 ? 'text-green' : 'text-red'} font-semibold">${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
@@ -419,6 +686,7 @@
 
         function renderHistoryTable(currentTotalVal, dailyProfit, totalProfit) {
             const tbody = document.getElementById('historyTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
@@ -444,427 +712,31 @@
             });
         }
 
-        async function processPdfSnapshot(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                
-                let fullText = "";
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(" ");
-                    fullText += pageText + "\n";
-                }
-
-                const cleanText = fullText.replace(/\s+/g, ' ');
-                let compactText = cleanText;
-
-                for (let i = 0; i < 20; i++) {
-                    compactText = compactText.replace(/([ก-๙])\s+([ก-๙])/g, '$1$2');
-                }
-
-                const THAI_MONTHS = {
-                    "มกราคม":"01", "กุมภาพันธ์":"02", "มีนาคม":"03", "เมษายน":"04",
-                    "พฤษภาคม":"05", "มิถุนายน":"06", "กรกฎาคม":"07", "สิงหาคม":"08",
-                    "กันยายน":"09", "ตุลาคม":"10", "พฤศจิกายน":"11", "ธันวาคม":"12"
-                };
-
-                let docDate = new Date().toISOString().slice(0, 10);
-                const dateMatch = compactText.match(/ณ\s*วันที่\s*(\d{1,2})\s*([ก-๙]+)\s*(\d{4})/);
-                if (dateMatch) {
-                    const day = dateMatch[1].padStart(2, '0');
-                    const monthStr = dateMatch[2];
-                    const yearTH = parseInt(dateMatch[3]);
-                    
-                    const month = THAI_MONTHS[monthStr] || "01";
-                    const yearEN = yearTH > 2500 ? yearTH - 543 : yearTH;
-                    
-                    docDate = `${yearEN}-${month}-${day}`;
-                }
-
-                let updatedCount = 0;
-                let navDiscrepancies = [];
-
-                PLAN_MAPPING.forEach(rule => {
-                    const fund = funds.find(f => f.id === rule.fundId);
-                    if (!fund) return;
-
-                    const regex = new RegExp(`แผน${rule.keywords[0]}[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{4})[\\s\\S]*?([\\d,]+\\.\\d{2})`, "g");
-                    const match = regex.exec(compactText);
-
-                    if (match) {
-                        const pdfUnits = parseFloat(match[1].replace(/,/g, ''));
-                        const pdfNav = parseFloat(match[2].replace(/,/g, ''));
-                        const pdfAmount = parseFloat(match[3].replace(/,/g, ''));
-
-                        if (pdfUnits > 0) {
-                            fund.units = pdfUnits; 
-                            updatedCount++;
-
-                            if (pdfNav > 0 && Math.abs(pdfNav - fund.currentNav) > 0.0001) {
-                                navDiscrepancies.push(`- แผน${rule.keywords[0]}: PDF Snapshot NAV (${pdfNav.toFixed(4)}) ไม่ตรงกับ Auto NAV (${fund.currentNav.toFixed(4)})`);
-                            }
-
-                            const exists = gpfTransactions.some(t =>
-                                t.type === 'PDF_SNAPSHOT' &&
-                                t.fundId === fund.id &&
-                                t.date === docDate
-                            );
-                            
-                            if (!exists) {
-                                gpfTransactions.push({
-                                    fundId: fund.id,
-                                    date: docDate,
-                                    type: 'PDF_SNAPSHOT',
-                                    plan: rule.keywords[0],
-                                    nav: pdfNav,
-                                    units: pdfUnits,
-                                    amount: pdfAmount
-                                });
-                            }
-                        }
-                    }
-                });
-
-                if (updatedCount > 0) {
-                    recalculateAvgNavs();
-                    await saveToFirebase();
-                    renderAll();
-
-                    let alertMsg = `อัปเดตจำนวนหน่วยสะสม (units) จาก PDF Snapshot สำเร็จ ${updatedCount} แผน!`;
-                    if (navDiscrepancies.length > 0) {
-                        alertMsg += `\n\n⚠️ แจ้งเตือน NAV ไม่ตรงกับ Auto NAV:\n` + navDiscrepancies.join('\n');
-                    }
-                    alert(alertMsg);
-                } else {
-                    alert("ไม่พบรูปแบบข้อมูลแผนลงทุนในไฟล์ PDF สรุปพอร์ต กรุณาตรวจสอบไฟล์");
-                }
-
-            } catch (err) {
-                console.error("PDF Snapshot Error:", err);
-                alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF Snapshot");
-            } finally {
-                event.target.value = '';
-            }
-        }
-
-        async function processOcrImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const statusContainer = document.getElementById('ocrStatusContainer');
-            const statusText = document.getElementById('ocrStatusText');
-            const previewImg = document.getElementById('ocrPreviewImg');
-            const spinner = document.getElementById('ocrSpinner');
-            const resultForm = document.getElementById('ocrResultForm');
-            const listContainer = document.getElementById('ocrPlanListContainer');
-
-            statusContainer.classList.remove('hidden');
-            resultForm.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            statusText.innerText = "กำลังประมวลผลรูปภาพ (OCR)...";
-
-            const objectUrl = URL.createObjectURL(file);
-            previewImg.src = objectUrl;
-            previewImg.classList.remove('hidden');
-
-            previewImg.onload = async () => {
-                try {
-                    const worker = await Tesseract.createWorker('tha+eng');
-                    const ret = await worker.recognize(file);
-                    await worker.terminate();
-
-                    let text = ret.data.text;
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-                    detectedOcrPlans = [];
-                    let currentPlan = null;
-                    const todayStr = new Date().toISOString().slice(0, 10);
-
-                    lines.forEach((line) => {
-                        if (
-                            line.includes("หุ้นไทย") ||
-                            line.includes("ต่างประเทศ") ||
-                            line.includes("อสังหา") ||
-                            line.includes("อสังหาริมทรัพย์") ||
-                            line.includes("ตราสารหนี้")
-                        ) {
-                            if (currentPlan && currentPlan.numbers.length >= 2) {
-                                const nav = currentPlan.numbers[0];
-                                const units = currentPlan.numbers[1];
-                                const amount = currentPlan.numbers[2] || (nav * units);
-                                const fId = getFundIdByPlanName(currentPlan.name);
-
-                                detectedOcrPlans.push({
-                                    fundId: fId,
-                                    date: todayStr,
-                                    nav: nav,
-                                    units: units,
-                                    amount: amount,
-                                    planName: currentPlan.name
-                                });
-                            }
-
-                            let name = "";
-                            if (line.includes("หุ้นไทย")) name = "หุ้นไทย";
-                            else if (line.includes("อสังหา") || line.includes("อสังหาริมทรัพย์")) name = "อสังหาริมทรัพย์";
-                            else if (line.includes("ต่างประเทศ")) name = "ต่างประเทศ";
-                            else if (line.includes("ตราสารหนี้")) name = "ตราสารหนี้";
-
-                            currentPlan = { name, numbers: [] };
-                        } else if (currentPlan) {
-                            const nums = line.match(/[\d,]+\.\d+/g);
-                            if (nums) {
-                                nums.forEach(n => currentPlan.numbers.push(parseFloat(n.replace(/,/g, ''))));
-                            }
-                        }
-                    });
-
-                    if (currentPlan && currentPlan.numbers.length >= 2) {
-                        const nav = currentPlan.numbers[0];
-                        const units = currentPlan.numbers[1];
-                        const amount = currentPlan.numbers[2] || (nav * units);
-                        const fId = getFundIdByPlanName(currentPlan.name);
-
-                        detectedOcrPlans.push({
-                            fundId: fId,
-                            date: todayStr,
-                            nav: nav,
-                            units: units,
-                            amount: amount,
-                            planName: currentPlan.name
-                        });
-                    }
-
-                    listContainer.innerHTML = '';
-                    document.getElementById('ocrCountBadge').innerText = `${detectedOcrPlans.length} รายการ`;
-
-                    if (detectedOcrPlans.length === 0) {
-                        statusText.innerText = "ไม่พบข้อมูลสลิปการซื้อ/สลับแผนในภาพ กรุณาถ่ายให้ชัดเจน";
-                        spinner.classList.add('hidden');
-                        return;
-                    }
-
-                    detectedOcrPlans.forEach((item, index) => {
-                        const div = document.createElement('div');
-                        div.className = "bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-2";
-                        div.innerHTML = `
-                            <div class="flex justify-between items-center border-b border-slate-700/80 pb-1">
-                                <span class="font-bold text-amber-400 text-xs">#${index + 1} แผน${item.planName}</span>
-                                <input type="hidden" id="ocrPlanName_${index}" value="${item.planName}">
-                                <input type="hidden" id="ocrFundId_${index}" value="${item.fundId || ''}">
-                            </div>
-                            <div class="grid grid-cols-4 gap-2">
-                                <div class="col-span-4 sm:col-span-1">
-                                    <label class="text-gray-400 text-[10px]">ประเภท:</label>
-                                    <select id="ocrType_${index}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-400 text-[11px] font-bold outline-none">
-                                        <option value="OCR_BUY">ซื้อ/สลับเข้า (+)</option>
-                                        <option value="OCR_SNAPSHOT">ยอดสะสมล่าสุด (=)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-gray-400 text-[10px]">NAV วันซื้อ:</label>
-                                    <input type="number" step="0.0001" id="ocrNav_${index}" value="${item.nav || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-semibold outline-none focus:border-amber-500">
-                                </div>
-                                <div>
-                                    <label class="text-gray-400 text-[10px]">จำนวนหน่วย (Units):</label>
-                                    <input type="number" step="0.0001" id="ocrUnits_${index}" value="${item.units || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-emerald-400 font-bold outline-none focus:border-emerald-500">
-                                </div>
-                                <div>
-                                    <label class="text-gray-400 text-[10px]">จำนวนเงิน (บาท):</label>
-                                    <input type="number" step="0.01" id="ocrAmount_${index}" value="${item.amount || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white font-semibold outline-none focus:border-amber-500">
-                                </div>
-                            </div>
-                        `;
-                        listContainer.appendChild(div);
-                    });
-
-                    statusText.innerText = `สแกนสำเร็จ พบรายการสลับ/ซื้อทั้งหมด ${detectedOcrPlans.length} รายการ`;
-                    spinner.classList.add('hidden');
-                    resultForm.classList.remove('hidden');
-
-                } catch (err) {
-                    console.error("OCR Error:", err);
-                    statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
-                    spinner.classList.add('hidden');
-                }
-            };
-        }
-
-        async function applyOcrData() {
-            if (detectedOcrPlans.length === 0) return;
-
-            const todayStr = new Date().toISOString().slice(0, 10);
-            let updatedCount = 0;
-
-            detectedOcrPlans.forEach((_, index) => {
-                const planName = document.getElementById(`ocrPlanName_${index}`).value;
-                let fundId = document.getElementById(`ocrFundId_${index}`).value || getFundIdByPlanName(planName);
-                const nav = parseFloat(document.getElementById(`ocrNav_${index}`).value) || 0;
-                const units = parseFloat(document.getElementById(`ocrUnits_${index}`).value) || 0;
-                const amount = parseFloat(document.getElementById(`ocrAmount_${index}`).value) || (nav * units);
-                const ocrType = document.getElementById(`ocrType_${index}`).value;
-
-                if (!planName || units === 0) return;
-
-                gpfTransactions.push({
-                    fundId: fundId,
-                    date: todayStr,
-                    type: ocrType,
-                    plan: planName,
-                    nav: nav,
-                    units: units,
-                    amount: amount
-                });
-
-                const fund = funds.find(f => f.id === fundId || f.code.includes(planName));
-                if (fund) {
-                    if (ocrType === 'OCR_BUY') {
-                        fund.units += units;
-                    } else {
-                        fund.units = units;
-                    }
-                }
-
-                updatedCount++;
-            });
-
-            recalculateAvgNavs();
-            await saveToFirebase();
-            renderAll();
-            closeOcrModal();
-            alert(`บันทึก gpf_transactions สำเร็จ ${updatedCount} รายการ และคำนวณ avgNav ใหม่เรียบร้อยแล้ว!`);
-        }
-
         function openFundModal(id = null) {
             document.getElementById('editFundId').value = id || '';
-            const avgNavInput = document.getElementById('inputAvgNav');
-
-            if (id) {
-                const f = funds.find(item => item.id === id);
-                if (f) {
-                    document.getElementById('modalTitle').innerText = "แก้ไขแผนลงทุน";
-                    document.getElementById('inputCode').value = f.code || '';
-                    document.getElementById('inputAvgNav').value = f.avgNav || '';
-                    document.getElementById('inputCurrentNav').value = f.currentNav || '';
-                    document.getElementById('inputUnits').value = f.units || '';
-                    document.getElementById('inputTargetPct').value = f.targetPct || 0;
-                    
-                    avgNavInput.setAttribute('readonly', true);
-                    avgNavInput.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            } else {
-                document.getElementById('modalTitle').innerText = "เพิ่มแผนลงทุน";
-                document.getElementById('inputCode').value = '';
-                document.getElementById('inputAvgNav').value = '';
-                document.getElementById('inputCurrentNav').value = '';
-                document.getElementById('inputUnits').value = '';
-                document.getElementById('inputTargetPct').value = '';
-                
-                avgNavInput.removeAttribute('readonly');
-                avgNavInput.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-            document.getElementById('fundModal').classList.remove('hidden');
+            const modal = document.getElementById('fundModal');
+            if (modal) modal.classList.remove('hidden');
         }
-
-        function closeFundModal() { document.getElementById('fundModal').classList.add('hidden'); }
-        function openOcrModal() { document.getElementById('ocrModal').classList.remove('hidden'); }
+        function closeFundModal() { 
+            const modal = document.getElementById('fundModal');
+            if (modal) modal.classList.add('hidden'); 
+        }
+        function openOcrModal() { 
+            const modal = document.getElementById('ocrModal');
+            if (modal) modal.classList.remove('hidden'); 
+        }
         function closeOcrModal() { 
-            document.getElementById('ocrModal').classList.add('hidden'); 
-            document.getElementById('ocrStatusContainer').classList.add('hidden');
-            document.getElementById('ocrResultForm').classList.add('hidden');
-            document.getElementById('fileInput').value = '';
+            const modal = document.getElementById('ocrModal');
+            if (modal) modal.classList.add('hidden'); 
         }
 
-        async function saveFund() {
-            const id = document.getElementById('editFundId').value;
-            const code = document.getElementById('inputCode').value;
-            const avgNav = parseFloat(document.getElementById('inputAvgNav').value) || 0;
-            const currentNav = parseFloat(document.getElementById('inputCurrentNav').value) || avgNav;
-            const units = parseFloat(document.getElementById('inputUnits').value) || 0;
-            const targetPct = parseFloat(document.getElementById('inputTargetPct').value) || 0;
-
-            if (id) {
-                const f = funds.find(item => item.id === id);
-                if (f) {
-                    f.code = code;
-                    f.currentNav = currentNav;
-                    f.units = units;
-                    f.targetPct = targetPct;
-                }
-            } else {
-                const newFundId = 'gpf_fund_' + Date.now();
-                funds.push({
-                    id: newFundId,
-                    code: code,
-                    avgNav: avgNav,
-                    currentNav: currentNav,
-                    units: units,
-                    targetPct: targetPct
-                });
-
-                if (units > 0 && avgNav > 0) {
-                    gpfTransactions.push({
-                        fundId: newFundId,
-                        date: new Date().toISOString().slice(0, 10),
-                        type: 'INITIAL',
-                        plan: code,
-                        nav: avgNav,
-                        units: units,
-                        amount: units * avgNav
-                    });
-                }
-            }
-
-            await saveToFirebase();
-            closeFundModal();
-            renderAll();
-        }
-
-        async function deleteFund(id) {
-            if (confirm("คุณต้องการลบแผนลงทุนนี้ใช่หรือไม่?")) {
-                funds = funds.filter(f => f.id !== id);
-                gpfTransactions = gpfTransactions.filter(t => t.fundId !== id);
-                await saveToFirebase();
-                renderAll();
-            }
-        }
-
-        function exportCSV() {
-            if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
-            
-            let csvContent = "\uFEFF";
-            csvContent += "ชื่อแผนลงทุน,NAV ต้นทุนถัวเฉลี่ย,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
-
-            funds.forEach(f => {
-                const fVal = f.units * f.currentNav;
-                const fCost = f.units * f.avgNav;
-                const profit = fVal - fCost;
-                const codeName = `"${(f.code || '').replace(/"/g, '""')}"`;
-                csvContent += `${codeName},${f.avgNav.toFixed(4)},${f.currentNav.toFixed(4)},${f.units},${fVal.toFixed(2)},${profit.toFixed(2)},${f.targetPct || 0}\n`;
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", url);
-            downloadAnchor.setAttribute("download", `gpf_portfolio_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            document.body.removeChild(downloadAnchor);
-        }
-
-        // 🚫 2. ถอนสิทธิ์การยิง PUT ออกจากหน้าเบราว์เซอร์
         async function saveToFirebase() {
-            console.log('💾 Data processed locally (Cloud write handled via Server/Actions)');
+            console.log('💾 Local processing complete (Server sync handled via Python/Actions)');
         }
 
+        // เริ่มรันการโหลดข้อมูล
         loadData();
-       
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -873,3 +745,5 @@
             });
         }
     </script>
+</body>
+</html>
