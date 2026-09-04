@@ -2,6 +2,7 @@ import urllib.request
 import re
 import json
 import ssl
+import os
 from datetime import datetime, timezone, timedelta
 
 GPF_URL = "https://www.gpf.or.th/thai2019/About/main.php?page=memberfund&lang=th&size=n&pattern=n&menu=statistic"
@@ -30,21 +31,6 @@ def fetch_gpf_nav():
     date_pattern = r'(?:วันที่ประกาศใช้|ณ\s*วันที่|ประจำวันที่)[\s\S]*?(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{4}|\d{1,2}\s+[ก-๙\.]+\s+\d{4})'
     date_matches = re.findall(date_pattern, html, re.IGNORECASE)
 
-    print("ALL DATES =", date_matches)
-
-    valid_dates = []
-    invalid_dates = []
-
-    for d in date_matches:
-        try:
-            datetime.strptime(d, "%d/%m/%Y")
-            valid_dates.append(d)
-        except:
-            invalid_dates.append(d)
-
-    print("VALID DATES =", valid_dates)
-    print("INVALID DATES =", invalid_dates)
-    
     if date_matches:
         nav_date_str = date_matches[0]
         print("SELECTED DATE =", nav_date_str)
@@ -65,6 +51,8 @@ def fetch_gpf_nav():
             nav_data['แผนหุ้นไทย'] = nav_val
         elif 'อสังหาริมทรัพย์' in row:
             nav_data['แผนกองทุนอสังหาริมทรัพย์ไทย'] = nav_val
+        elif 'ตราสารหนี้' in row:
+            nav_data['แผนตราสารหนี้'] = nav_val
 
     return nav_data, nav_date_str
 
@@ -73,16 +61,22 @@ def update_firebase(nav_data, nav_date_str):
         print("❌ ไม่พบข้อมูล NAV จากหน้าเว็บ กบข.")
         return
 
-    db_url = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json"
+    # 🔑 ดึง Firebase Secret Key หรือ Database Secret จาก GitHub Secrets (ป้องกัน 401 Unauthorized)
+    firebase_secret = os.environ.get('FIREBASE_SECRET', '')
+    
+    db_base_url = "https://scb-e-class-default-rtdb.asia-southeast1.firebasedatabase.app/gpf_ports/my-gpf-4750131.json"
+    db_url = f"{db_base_url}?auth={firebase_secret}" if firebase_secret else db_base_url
     
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
+    # 1. ดึงข้อมูลเดิมจาก Firebase ทั้งหมด เพื่อป้องกันข้อมูล History หาย
+    current_data = {}
     try:
         req = urllib.request.Request(db_url)
         with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
-            current_data = json.loads(resp.read().decode('utf-8'))
+            current_data = json.loads(resp.read().decode('utf-8')) or {}
     except Exception as e:
         print(f"❌ Error fetching Firebase: {e}")
         return
@@ -91,9 +85,11 @@ def update_firebase(nav_data, nav_date_str):
         funds_list = current_data.get('funds', [])
     elif isinstance(current_data, list):
         funds_list = current_data
+        current_data = {"funds": funds_list}
     else:
         funds_list = []
 
+    # 2. อัปเดต NAV ปัจจุบันลงในกองทุน
     for fund in funds_list:
         code = fund.get('code')
         if code in nav_data:
@@ -115,18 +111,19 @@ def update_firebase(nav_data, nav_date_str):
     else:
         display_text = f"{datetime.now(tz_th).strftime('%d/%m/%Y %H:%M น.')} (Auto)"
 
-    payload = {
-        "funds": funds_list,
-        "lastUpdated": display_text
-    }
+    # 3. เตรียม Payload โดยรักษาโครงสร้างเดิมทั้งหมด
+    payload = current_data
+    payload["funds"] = funds_list
+    payload["lastUpdated"] = display_text
 
+    # 4. ส่ง Request บันทึกข้อมูลลง Firebase
     try:
         req = urllib.request.Request(db_url, data=json.dumps(payload).encode('utf-8'), method='PUT')
         req.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
             print(f"🚀 Firebase Updated Successfully: {display_text}")
     except Exception as e:
-        print(f"❌ Error updating Firebase: {e}")
+        print(f"❌ Error updating Firebase (Status 401 = Missing FIREBASE_SECRET): {e}")
 
 if __name__ == "__main__":
     navs, nav_date = fetch_gpf_nav()
