@@ -59,35 +59,36 @@
 
         // 🌐 1. [NETWORK ONLY] ดึงข้อมูลสดตรงจาก Firebase เท่านั้น
         async function loadData() {
-            try {
-                console.log('START LOAD GPF DATA (Network Only)');
-                const res = await fetch(DB_URL + '?t=' + Date.now());
-                const data = await res.json();
-                
-                if (Array.isArray(data)) {
-                    funds = data;
-                } else if (data && typeof data === 'object') {
-                    funds = data.funds || data.items || [];
-                    historyLogs = data.history || [];
-                    gpfTransactions = data.gpf_transactions || [];
+    try {
+        console.log('START LOAD GPF DATA (Network Only)');
+        const res = await fetch(DB_URL + '?t=' + Date.now());
+        const data = await res.json();
+        
+        if (Array.isArray(data)) {
+            funds = data;
+        } else if (data && typeof data === 'object') {
+            funds = data.funds || data.items || [];
+            historyLogs = data.history || [];
+            gpfTransactions = data.gpf_transactions || [];
 
-                    if (data.lastUpdated) {
-                        document.getElementById('lastUpdatedBadge').innerText = data.lastUpdated;
-                    }
-                } else {
-                    funds = [];
-                }
-
-                funds = funds.filter(f => f && f.id && !f.id.startsWith('fund_'));
-                
-                recalculateAvgNavs();
-                renderAll();
-                console.log('☁️ ดึงข้อมูล GPF สดสำเร็จ');
-            } catch (err) {
-                console.error("Load Data Error:", err);
+            // ✅ เช็ก element ก่อนกำหนดค่า ป้องกัน Error จอดับ
+            const badgeEl = document.getElementById('lastUpdatedBadge');
+            if (data.lastUpdated && badgeEl) {
+                badgeEl.innerText = data.lastUpdated;
             }
+        } else {
+            funds = [];
         }
 
+        funds = funds.filter(f => f && f.id && !f.id.startsWith('fund_'));
+        
+        recalculateAvgNavs();
+        renderAll();
+        console.log('☁️ ดึงข้อมูล GPF สดสำเร็จ');
+    } catch (err) {
+        console.error("Load Data Error:", err);
+    }
+}
         function renderAll() {
             let totalVal = 0;
             let totalCost = 0;
