@@ -71,7 +71,6 @@
             historyLogs = data.history || [];
             gpfTransactions = data.gpf_transactions || [];
 
-            // ✅ เช็ก element ก่อนกำหนดค่า ป้องกัน Error จอดับ
             const badgeEl = document.getElementById('lastUpdatedBadge');
             if (data.lastUpdated && badgeEl) {
                 badgeEl.innerText = data.lastUpdated;
@@ -80,8 +79,14 @@
             funds = [];
         }
 
-        funds = funds.filter(f => f && f.id && !f.id.startsWith('fund_'));
+        // ❌ ปิดการฟิลเตอร์ที่เข้มเกินไป ซึ่งอาจลบข้อมูลแผนทั้งหมดจนกลายเป็น []
+        // funds = funds.filter(f => f && f.id && !f.id.startsWith('fund_'));
+
+        // ✅ กรองเฉพาะ Object ที่มีค่าจริงอยู่เท่านั้น
+        funds = funds.filter(f => f && typeof f === 'object');
         
+        console.log('📊 Loaded funds array:', funds);
+
         recalculateAvgNavs();
         renderAll();
         console.log('☁️ ดึงข้อมูล GPF สดสำเร็จ');
