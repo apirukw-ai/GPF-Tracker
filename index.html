@@ -96,19 +96,20 @@
             let ytdValStartSum = 0;
 
             const tableBody = document.getElementById('fundTableBody');
+            if (!tableBody) return; // 🛡️ ป้องกัน Error null จอดับ
             tableBody.innerHTML = '';
 
             const fundLabels = [];
             const fundProfitPcts = [];
 
             funds.forEach(f => {
-                const fVal = f.units * f.currentNav;                     
-                const fCost = f.units * f.avgNav;                         
+                const fVal = (f.units || 0) * (f.currentNav || 0);                     
+                const fCost = (f.units || 0) * (f.avgNav || 0);                         
                 const profit = fVal - fCost;                              
                 const profitPct = fCost > 0 ? (profit / fCost) * 100 : 0; 
 
-                const prevNav = (f.prevNav !== undefined && f.prevNav !== null) ? f.prevNav : f.avgNav;
-                const fValYesterday = f.units * prevNav;                 
+                const prevNav = (f.prevNav !== undefined && f.prevNav !== null) ? f.prevNav : (f.avgNav || 0);
+                const fValYesterday = (f.units || 0) * prevNav;                 
                 const todayProfitBaht = fVal - fValYesterday;            
                 const todayProfitPct = fValYesterday > 0 ? (todayProfitBaht * 100) / fValYesterday : 0; 
 
@@ -121,7 +122,7 @@
                     ytdProfitBaht = (fVal * ytdProfitPct) / (100 + ytdProfitPct);
                     fValYtdStart = fVal - ytdProfitBaht;
                 } else if (f.ytdNav) {
-                    fValYtdStart = f.units * f.ytdNav;            
+                    fValYtdStart = (f.units || 0) * f.ytdNav;            
                     ytdProfitBaht = fVal - fValYtdStart;               
                     ytdProfitPct = fValYtdStart > 0 ? (ytdProfitBaht / fValYtdStart) * 100 : 0;
                 } else {
@@ -135,7 +136,7 @@
                 dailyProfitSum += todayProfitBaht;
                 ytdValStartSum += fValYtdStart;
 
-                fundLabels.push(f.code);
+                fundLabels.push(f.code || '');
                 fundProfitPcts.push(parseFloat(profitPct.toFixed(2)));
 
                 const safeAvgNav = f.avgNav || 0;
@@ -174,41 +175,53 @@
             const totalYtdPct = baseStartVal > 0 ? (totalYtdProfitBaht / baseStartVal) * 100 : 0;
 
             const tableFoot = document.getElementById('fundTableFoot');
-            tableFoot.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-left font-bold text-amber-400">ผลรวมทั้งพอร์ต (Total Summary)</td>
-                    <td class="text-right font-bold text-white">฿${formatNum(totalVal)}</td>
-                    <td class="text-right font-bold ${totalProfit >= 0 ? 'text-green' : 'text-red'}">
-                        ${totalProfit >= 0 ? '+' : ''}฿${formatNum(totalProfit)} (${totalProfitPct.toFixed(2)}%)
-                    </td>
-                    <td class="text-right font-bold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}">
-                        ${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)} (${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}%)
-                    </td>
-                    <td class="text-right font-bold ${totalYtdProfitBaht >= 0 ? 'text-green' : 'text-red'}">
-                        ${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} (${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}%)
-                    </td>
-                    <td></td>
-                </tr>
-            `;
+            if (tableFoot) {
+                tableFoot.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-left font-bold text-amber-400">ผลรวมทั้งพอร์ต (Total Summary)</td>
+                        <td class="text-right font-bold text-white">฿${formatNum(totalVal)}</td>
+                        <td class="text-right font-bold ${totalProfit >= 0 ? 'text-green' : 'text-red'}">
+                            ${totalProfit >= 0 ? '+' : ''}฿${formatNum(totalProfit)} (${totalProfitPct.toFixed(2)}%)
+                        </td>
+                        <td class="text-right font-bold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}">
+                            ${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)} (${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}%)
+                        </td>
+                        <td class="text-right font-bold ${totalYtdProfitBaht >= 0 ? 'text-green' : 'text-red'}">
+                            ${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} (${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}%)
+                        </td>
+                        <td></td>
+                    </tr>
+                `;
+            }
 
-            document.getElementById('totalValDisplay').innerText = `฿${formatNum(totalVal)}`;
+            const totalValEl = document.getElementById('totalValDisplay');
+            if (totalValEl) totalValEl.innerText = `฿${formatNum(totalVal)}`;
             
             const profitEl = document.getElementById('totalProfitDisplay');
-            profitEl.innerText = `${totalProfit >= 0 ? '+' : ''}฿${formatNum(totalProfit)}`;
-            profitEl.className = `text-xl font-extrabold ${totalProfit >= 0 ? 'text-green' : 'text-red'}`;
-            document.getElementById('totalProfitSub').innerText = `${totalProfitPct >= 0 ? '+' : ''}${totalProfitPct.toFixed(2)}% จากต้นทุน`;
+            if (profitEl) {
+                profitEl.innerText = `${totalProfit >= 0 ? '+' : ''}฿${formatNum(totalProfit)}`;
+                profitEl.className = `text-xl font-extrabold ${totalProfit >= 0 ? 'text-green' : 'text-red'}`;
+            }
+            const profitSub = document.getElementById('totalProfitSub');
+            if (profitSub) profitSub.innerText = `${totalProfitPct >= 0 ? '+' : ''}${totalProfitPct.toFixed(2)}% จากต้นทุน`;
 
             const dailyEl = document.getElementById('dailyProfitDisplay');
-            dailyEl.innerText = `${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)}`;
-            dailyEl.className = `text-xl font-extrabold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}`;
-            document.getElementById('dailyProfitSub').innerText = `${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}% วันนี้`;
+            if (dailyEl) {
+                dailyEl.innerText = `${dailyProfitSum >= 0 ? '+' : ''}฿${formatNum(dailyProfitSum)}`;
+                dailyEl.className = `text-xl font-extrabold ${dailyProfitSum >= 0 ? 'text-green' : 'text-red'}`;
+            }
+            const dailySub = document.getElementById('dailyProfitSub');
+            if (dailySub) dailySub.innerText = `${totalDailyPct >= 0 ? '+' : ''}${totalDailyPct.toFixed(2)}% วันนี้`;
 
-            document.getElementById('ytdProfitDisplay').innerText = `${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}% YTD`;
-            document.getElementById('ytdProfitSub').innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับ 1 ม.ค. 69`;
+            const ytdEl = document.getElementById('ytdProfitDisplay');
+            if (ytdEl) ytdEl.innerText = `${totalYtdPct >= 0 ? '+' : ''}${totalYtdPct.toFixed(2)}% YTD`;
+            const ytdSub = document.getElementById('ytdProfitSub');
+            if (ytdSub) ytdSub.innerText = `${totalYtdProfitBaht >= 0 ? '+' : ''}฿${formatNum(totalYtdProfitBaht)} เทียบกับ 1 ม.ค. 69`;
 
-            if (document.getElementById('lastUpdatedBadge').innerText === '-') {
+            const badgeEl = document.getElementById('lastUpdatedBadge');
+            if (badgeEl && badgeEl.innerText === '-') {
                 const now = new Date();
-                document.getElementById('lastUpdatedBadge').innerText = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
+                badgeEl.innerText = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
             }
 
             renderAllocation(totalVal);
