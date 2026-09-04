@@ -2,10 +2,10 @@ name: Auto Update GPF NAV
 
 on:
   schedule:
-    # รันทุกวันจันทร์-ศุกร์ เวลา 10:10 น. ไทย (03:10 UTC)
-    - cron: '10 3 * * 1-5'
-    # รันทุกวันจันทร์-ศุกร์ เวลา 10:30 น. ไทย (03:30 UTC)
-    - cron: '30 3 * * 1-5'
+    # รันจันทร์-ศุกร์ เวลา 18:10 น. (11:10 UTC)
+    - cron: '10 11 * * 1-5'
+    # รันจันทร์-ศุกร์ เวลา 18:30 น. (11:30 UTC)
+    - cron: '30 11 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -13,12 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
       - name: Run NAV Update Script
+        env:
+          FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
         run: python update_nav.py
