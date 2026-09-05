@@ -712,297 +712,73 @@
             });
         }
 
-       // ==========================================
-// 1. ระบบจัดการ Modal (การเปิด/ปิด ป๊อปอัป)
-// ==========================================
-window.openFundModal = function(id = null) {
-    document.getElementById('editFundId').value = id || '';
-    const modal = document.getElementById('fundModal');
-    
-    if (id) {
-        const fund = funds.find(f => f.id === id);
-        if (fund) {
-            document.getElementById('modalTitle').innerText = "แก้ไขแผนลงทุน";
-            document.getElementById('inputCode').value = fund.code || '';
-            document.getElementById('inputAvgNav').value = fund.avgNav || 0;
-            document.getElementById('inputCurrentNav').value = fund.currentNav || 0;
-            document.getElementById('inputUnits').value = fund.units || 0;
-            document.getElementById('inputTargetPct').value = fund.targetPct || 0;
+        function openFundModal(id = null) {
+            document.getElementById('editFundId').value = id || '';
+            const modal = document.getElementById('fundModal');
+            if (modal) modal.classList.remove('hidden');
         }
-    } else {
-        document.getElementById('modalTitle').innerText = "เพิ่มแผนลงทุน";
-        document.getElementById('inputCode').value = '';
-        document.getElementById('inputAvgNav').value = '';
-        document.getElementById('inputCurrentNav').value = '';
-        document.getElementById('inputUnits').value = '';
-        document.getElementById('inputTargetPct').value = '';
-    }
-
-    if (modal) modal.classList.remove('hidden');
-};
-
-window.closeFundModal = function() { 
-    const modal = document.getElementById('fundModal');
-    if (modal) modal.classList.add('hidden'); 
-};
-
-window.openOcrModal = function() { 
-    const modal = document.getElementById('ocrModal');
-    if (modal) modal.classList.remove('hidden'); 
-};
-
-window.closeOcrModal = function() { 
-    const modal = document.getElementById('ocrModal');
-    if (modal) modal.classList.add('hidden'); 
-};
-
-// ==========================================
-// 2. ฟังก์ชัน บันทึก/ลบ แผนลงทุนลง Firebase
-// ==========================================
-window.saveFund = async function() {
-    const id = document.getElementById('editFundId').value;
-    const code = document.getElementById('inputCode').value.trim();
-    const avgNav = parseFloat(document.getElementById('inputAvgNav').value) || 0;
-    const currentNav = parseFloat(document.getElementById('inputCurrentNav').value) || 0;
-    const units = parseFloat(document.getElementById('inputUnits').value) || 0;
-    const targetPct = parseFloat(document.getElementById('inputTargetPct').value) || 0;
-
-    if (!code) return alert("กรุณาระบุชื่อแผนลงทุน");
-
-    if (id) {
-        const index = funds.findIndex(f => f.id === id);
-        if (index !== -1) {
-            funds[index] = { ...funds[index], code, avgNav, currentNav, units, targetPct };
+        function closeFundModal() { 
+            const modal = document.getElementById('fundModal');
+            if (modal) modal.classList.add('hidden'); 
         }
-    } else {
-        const newFund = {
-            id: 'gpf_' + Date.now(),
-            code,
-            avgNav,
-            currentNav,
-            units,
-            targetPct
-        };
-        funds.push(newFund);
-    }
-
-    await window.syncToFirebase();
-    window.closeFundModal();
-    renderAll();
-};
-
-// ==========================================
-// 1. ฟังก์ชันลบแผนลงทุน (แก้ไขให้ลบจาก Array โดยตรงด้วย splice)
-// ==========================================
-window.deleteFund = async function(id) {
-    if (!confirm("คุณต้องการลบแผนลงทุนนี้ใช่หรือไม่?")) return;
-    
-    // ค้นหาตำแหน่ง (Index) ของแผนใน Array
-    const index = funds.findIndex(f => String(f.id) === String(id));
-    
-    if (index !== -1) {
-        // ลบข้อมูลออกในตำแหน่งนั้นโดยตรง
-        funds.splice(index, 1);
-        
-        // สั่งอัปเดตตาราง
-        if (typeof renderAll === 'function') renderAll();
-        else if (typeof window.renderAll === 'function') window.renderAll();
-        
-        // สั่งบันทึกลง Firebase
-        if (typeof window.syncToFirebase === 'function') {
-            await window.syncToFirebase();
+        function openOcrModal() { 
+            const modal = document.getElementById('ocrModal');
+            if (modal) modal.classList.remove('hidden'); 
         }
-    } else {
-        alert("ไม่พบรหัสแผนลงทุนที่ต้องการลบ");
-    }
-};
-
-// ==========================================
-// 2. ฟังก์ชันอ่าน PDF (ล้างช่องว่างก่อนดึงข้อมูล)
-// ==========================================
-window.processPdfSnapshot = async function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let fullText = "";
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            fullText += textContent.items.map(item => item.str).join(" ") + " ";
+        function closeOcrModal() { 
+            const modal = document.getElementById('ocrModal');
+            if (modal) modal.classList.add('hidden'); 
         }
 
-        // จัดการช่องว่างที่ซ้ำซ้อนให้เหลือเคาะเดียว เพื่อให้ Regex ทำงานได้เสถียร
-        fullText = fullText.replace(/\s+/g, ' ');
-        console.log("📄 ข้อความที่คลีนช่องว่างแล้ว:", fullText);
-
-        // ค้นหา: "แผน..." ตามด้วยตัวเลข 3 ชุด (จำนวนหน่วย, NAV, ยอดเงิน)
-        const regex = /(แผน[ก-๙a-zA-Z\s]+?)\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2})/g;
-        let match;
-        let updatedCount = 0;
-
-        while ((match = regex.exec(fullText)) !== null) {
-            const rawPlanName = match[1].trim();
-            const units = parseFloat(match[2].replace(/,/g, ''));
-            const nav = parseFloat(match[3].replace(/,/g, ''));
-
-            if (isNaN(units) || isNaN(nav)) continue;
-
-            let targetFund = funds.find(f => f.code && (f.code.trim() === rawPlanName || rawPlanName.includes(f.code.trim())));
-
-            if (targetFund) {
-                targetFund.units = units;
-                targetFund.currentNav = nav;
-                if (!targetFund.avgNav || targetFund.avgNav === 0) targetFund.avgNav = nav;
-            } else {
-                funds.push({
-                    id: 'gpf_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-                    code: rawPlanName,
-                    units: units,
-                    currentNav: nav,
-                    avgNav: nav,
-                    targetPct: 0
-                });
-            }
-            updatedCount++;
+        async function saveToFirebase() {
+            console.log('💾 Local processing complete (Server sync handled via Python/Actions)');
         }
 
-        if (updatedCount > 0) {
-            if (typeof renderAll === 'function') renderAll();
-            else if (typeof window.renderAll === 'function') window.renderAll();
-
-            if (typeof window.syncToFirebase === 'function') {
-                await window.syncToFirebase();
-            }
-            alert(`นำเข้าข้อมูลสำเร็จทั้งหมด ${updatedCount} แผน!`);
-        } else {
-            alert("ไม่พบรูปแบบข้อมูลแผนลงทุนในไฟล์ PDF");
-        }
-
-    } catch (err) {
-        console.error("PDF Processing Error:", err);
-        alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF: " + err.message);
-    } finally {
-        event.target.value = "";
-    }
-};
-
-// ==========================================
-// 3. ฟังก์ชันสแกนรูปภาพ OCR
-// ==========================================
-window.processOcrImage = async function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const previewImg = document.getElementById('ocrPreviewImg');
-    const statusContainer = document.getElementById('ocrStatusContainer');
-    const statusText = document.getElementById('ocrStatusText');
-    const resultForm = document.getElementById('ocrResultForm');
-
-    if (statusContainer) statusContainer.classList.remove('hidden');
-    if (previewImg) {
-        previewImg.classList.remove('hidden');
-        previewImg.src = URL.createObjectURL(file);
-    }
-    if (statusText) statusText.innerText = "กำลังอ่านข้อมูลสลิปด้วย OCR...";
-
-    try {
-        const worker = await Tesseract.createWorker('tha+eng');
-        const ret = await worker.recognize(file);
-        await worker.terminate();
-
-        const extractedText = ret.data.text;
-        console.log("📷 ข้อความ OCR:", extractedText);
-
-        const regex = /(แผน[^\d]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/g;
-        let match;
-        let foundAny = false;
-
-        while ((match = regex.exec(extractedText)) !== null) {
-            const rawPlanName = match[1].trim();
-            const val1 = parseFloat(match[2].replace(/,/g, ''));
-            const val2 = parseFloat(match[3].replace(/,/g, ''));
-
-            let fund = funds.find(f => f.code && (f.code.includes(rawPlanName) || rawPlanName.includes(f.code)));
-            if (fund && !isNaN(val1)) {
-                fund.units = val1;
-                if (!isNaN(val2)) fund.currentNav = val2;
-                foundAny = true;
-            }
-        }
-
-        if (foundAny) {
-            if (typeof renderAll === 'function') renderAll();
-            else if (typeof window.renderAll === 'function') window.renderAll();
-
-            if (typeof window.syncToFirebase === 'function') {
-                await window.syncToFirebase();
-            }
-            if (statusText) statusText.innerText = "อัปเดตข้อมูลสำเร็จ!";
-        } else {
-            if (statusText) statusText.innerText = "สแกนสำเร็จ (โปรดตรวจสอบข้อมูล)";
-        }
-        if (resultForm) resultForm.classList.remove('hidden');
-    } catch (err) {
-        console.error("OCR Error:", err);
-        if (statusText) statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
-    } finally {
-        event.target.value = "";
-    }
-};
-
-window.applyOcrData = function() {
-    alert("บันทึกข้อมูลจากรูปสลิปเรียบร้อย");
-    window.closeOcrModal();
-};
-
-window.exportCSV = function() {
-    if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
-    
-    try {
-        let csvContent = "\uFEFF";
-        csvContent += "ชื่อแผนลงทุน,NAV ต้นทุนถัวเฉลี่ย,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
-
-        funds.forEach(f => {
-            const currentNav = f.currentNav || 0;
-            const avgNav = f.avgNav || 0;
-            const units = f.units || 0;
-            const fVal = units * currentNav;
-            const fCost = units * avgNav;
-            const profit = fVal - fCost;
-            const codeName = `"${(f.code || 'แผนลงทุน').replace(/"/g, '""')}"`;
+        function exportCSV() {
+            if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
             
-            csvContent += `${codeName},${avgNav.toFixed(4)},${currentNav.toFixed(4)},${units},${fVal.toFixed(2)},${profit.toFixed(2)},${f.targetPct || 0}\n`;
-        });
+            try {
+                let csvContent = "\uFEFF"; // UTF-8 BOM ให้ Excel อ่านภาษาไทยไม่เป็นต่างด้าว
+                csvContent += "ชื่อแผนลงทุน,NAV ต้นทุนถัวเฉลี่ย,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", url);
-        downloadAnchor.setAttribute("download", `gpf_portfolio_${new Date().toISOString().slice(0,10)}.csv`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        document.body.removeChild(downloadAnchor);
-        URL.revokeObjectURL(url);
-    } catch (err) {
-        console.error("CSV Export Error:", err);
-        alert("เกิดข้อผิดพลาดในการส่งออก CSV: " + err.message);
-    }
-};
+                funds.forEach(f => {
+                    const currentNav = f.currentNav || 0;
+                    const avgNav = f.avgNav || 0;
+                    const units = f.units || 0;
+                    const fVal = units * currentNav;
+                    const fCost = units * avgNav;
+                    const profit = fVal - fCost;
+                    const codeName = `"${(f.code || 'แผนลงทุน').replace(/"/g, '""')}"`;
+                    
+                    csvContent += `${codeName},${avgNav.toFixed(4)},${currentNav.toFixed(4)},${units},${fVal.toFixed(2)},${profit.toFixed(2)},${f.targetPct || 0}\n`;
+                });
 
-// เริ่มต้นโหลดข้อมูล
-loadData();
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", url);
+                downloadAnchor.setAttribute("download", `gpf_portfolio_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
+                URL.revokeObjectURL(url);
+                console.log("📥 ส่งออกไฟล์ CSV สำเร็จ");
+            } catch (err) {
+                console.error("CSV Export Error:", err);
+                alert("เกิดข้อผิดพลาดในการส่งออก CSV: " + err.message);
+            }
+        }
+        
+        // เริ่มรันการโหลดข้อมูล
+        loadData();
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('PWA Ready'))
-            .catch(err => console.error('SW Error:', err));
-    });
-}
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('PWA Ready'))
+                    .catch(err => console.error('SW Error:', err));
+            });
+        }
     </script>
 </body>
 </html>
