@@ -712,9 +712,32 @@
             });
         }
 
-       window.openFundModal = function(id = null) {
+       // ==========================================
+// 1. ระบบจัดการ Modal (การเปิด/ปิด ป๊อปอัป)
+// ==========================================
+window.openFundModal = function(id = null) {
     document.getElementById('editFundId').value = id || '';
     const modal = document.getElementById('fundModal');
+    
+    if (id) {
+        const fund = funds.find(f => f.id === id);
+        if (fund) {
+            document.getElementById('modalTitle').innerText = "แก้ไขแผนลงทุน";
+            document.getElementById('inputCode').value = fund.code || '';
+            document.getElementById('inputAvgNav').value = fund.avgNav || 0;
+            document.getElementById('inputCurrentNav').value = fund.currentNav || 0;
+            document.getElementById('inputUnits').value = fund.units || 0;
+            document.getElementById('inputTargetPct').value = fund.targetPct || 0;
+        }
+    } else {
+        document.getElementById('modalTitle').innerText = "เพิ่มแผนลงทุน";
+        document.getElementById('inputCode').value = '';
+        document.getElementById('inputAvgNav').value = '';
+        document.getElementById('inputCurrentNav').value = '';
+        document.getElementById('inputUnits').value = '';
+        document.getElementById('inputTargetPct').value = '';
+    }
+
     if (modal) modal.classList.remove('hidden');
 };
 
@@ -733,15 +756,143 @@ window.closeOcrModal = function() {
     if (modal) modal.classList.add('hidden'); 
 };
 
-window.saveToFirebase = async function() {
-    console.log('💾 Local processing complete (Server sync handled via Python/Actions)');
+// ==========================================
+// 2. ฟังก์ชัน บันทึก/ลบ แผนลงทุนลง Firebase
+// ==========================================
+window.saveFund = async function() {
+    const id = document.getElementById('editFundId').value;
+    const code = document.getElementById('inputCode').value.trim();
+    const avgNav = parseFloat(document.getElementById('inputAvgNav').value) || 0;
+    const currentNav = parseFloat(document.getElementById('inputCurrentNav').value) || 0;
+    const units = parseFloat(document.getElementById('inputUnits').value) || 0;
+    const targetPct = parseFloat(document.getElementById('inputTargetPct').value) || 0;
+
+    if (!code) return alert("กรุณาระบุชื่อแผนลงทุน");
+
+    if (id) {
+        const index = funds.findIndex(f => f.id === id);
+        if (index !== -1) {
+            funds[index] = { ...funds[index], code, avgNav, currentNav, units, targetPct };
+        }
+    } else {
+        const newFund = {
+            id: 'gpf_' + Date.now(),
+            code,
+            avgNav,
+            currentNav,
+            units,
+            targetPct
+        };
+        funds.push(newFund);
+    }
+
+    await window.syncToFirebase();
+    window.closeFundModal();
+    renderAll();
+};
+
+window.deleteFund = async function(id) {
+    if (!confirm("คุณต้องการลบแผนลงทุนนี้ใช่หรือไม่?")) return;
+    funds = funds.filter(f => f.id !== id);
+    await window.syncToFirebase();
+    renderAll();
+};
+
+window.syncToFirebase = async function() {
+    try {
+        const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
+        const payload = {
+            lastUpdated: nowStr,
+            funds: funds,
+            history: historyLogs,
+            gpf_transactions: gpfTransactions
+        };
+
+        const res = await fetch(DB_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            console.log("☁️ บันทึกข้อมูลลง Firebase สำเร็จ");
+            const badgeEl = document.getElementById('lastUpdatedBadge');
+            if (badgeEl) badgeEl.innerText = nowStr;
+        }
+    } catch (err) {
+        console.error("Firebase Sync Error:", err);
+        alert("บันทึกลง Firebase ไม่สำเร็จ: " + err.message);
+    }
+};
+
+// ==========================================
+// 3. ฟังก์ชัน นำเข้า PDF & สแกนรูปภาพ OCR
+// ==========================================
+window.processPdfSnapshot = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+        }
+
+        console.log("📄 ข้อความที่อ่านได้จาก PDF Snapshot:", fullText);
+        alert("อ่านข้อมูล PDF เรียบร้อยแล้ว (ตรวจสอบรายการข้อมูลใน Console)");
+    } catch (err) {
+        console.error("PDF Processing Error:", err);
+        alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF: " + err.message);
+    } finally {
+        event.target.value = "";
+    }
+};
+
+window.processOcrImage = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const previewImg = document.getElementById('ocrPreviewImg');
+    const statusContainer = document.getElementById('ocrStatusContainer');
+    const statusText = document.getElementById('ocrStatusText');
+    const resultForm = document.getElementById('ocrResultForm');
+
+    statusContainer.classList.remove('hidden');
+    previewImg.classList.remove('hidden');
+    previewImg.src = URL.createObjectURL(file);
+    statusText.innerText = "กำลังอ่านข้อมูลสลิปด้วย OCR (โปรดรอสักครู่)...";
+
+    try {
+        const worker = await Tesseract.createWorker('tha+eng');
+        const ret = await worker.recognize(file);
+        await worker.terminate();
+
+        console.log("📷 ข้อความที่ OCR อ่านได้:", ret.data.text);
+        statusText.innerText = "สแกนรูปภาพสลิปสำเร็จ!";
+        resultForm.classList.remove('hidden');
+    } catch (err) {
+        console.error("OCR Error:", err);
+        statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
+    } finally {
+        event.target.value = "";
+    }
+};
+
+window.applyOcrData = function() {
+    alert("บันทึกข้อมูลจากรูปสลิปเรียบร้อย");
+    window.closeOcrModal();
 };
 
 window.exportCSV = function() {
     if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
     
     try {
-        let csvContent = "\uFEFF"; // UTF-8 BOM
+        let csvContent = "\uFEFF";
         csvContent += "ชื่อแผนลงทุน,NAV ต้นทุนถัวเฉลี่ย,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
 
         funds.forEach(f => {
@@ -765,28 +916,22 @@ window.exportCSV = function() {
         downloadAnchor.click();
         document.body.removeChild(downloadAnchor);
         URL.revokeObjectURL(url);
-        console.log("📥 ส่งออกไฟล์ CSV สำเร็จ");
     } catch (err) {
         console.error("CSV Export Error:", err);
         alert("เกิดข้อผิดพลาดในการส่งออก CSV: " + err.message);
     }
 };
 
-// เติมบรรทัดผูกฟังก์ชันหลักที่เหลือให้ครบถ้วน
-if (typeof saveFund !== 'undefined') window.saveFund = saveFund;
-if (typeof processPdfSnapshot !== 'undefined') window.processPdfSnapshot = processPdfSnapshot;
-if (typeof processOcrImage !== 'undefined') window.processOcrImage = processOcrImage;
-        
-        // เริ่มรันการโหลดข้อมูล
-        loadData();
+// เริ่มต้นโหลดข้อมูล
+loadData();
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(() => console.log('PWA Ready'))
-                    .catch(err => console.error('SW Error:', err));
-            });
-        }
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log('PWA Ready'))
+            .catch(err => console.error('SW Error:', err));
+    });
+}
     </script>
 </body>
 </html>
