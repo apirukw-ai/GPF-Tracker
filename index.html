@@ -712,62 +712,70 @@
             });
         }
 
-        function openFundModal(id = null) {
-            document.getElementById('editFundId').value = id || '';
-            const modal = document.getElementById('fundModal');
-            if (modal) modal.classList.remove('hidden');
-        }
-        function closeFundModal() { 
-            const modal = document.getElementById('fundModal');
-            if (modal) modal.classList.add('hidden'); 
-        }
-        function openOcrModal() { 
-            const modal = document.getElementById('ocrModal');
-            if (modal) modal.classList.remove('hidden'); 
-        }
-        function closeOcrModal() { 
-            const modal = document.getElementById('ocrModal');
-            if (modal) modal.classList.add('hidden'); 
-        }
+       window.openFundModal = function(id = null) {
+    document.getElementById('editFundId').value = id || '';
+    const modal = document.getElementById('fundModal');
+    if (modal) modal.classList.remove('hidden');
+};
 
-        async function saveToFirebase() {
-            console.log('💾 Local processing complete (Server sync handled via Python/Actions)');
-        }
+window.closeFundModal = function() { 
+    const modal = document.getElementById('fundModal');
+    if (modal) modal.classList.add('hidden'); 
+};
 
-        function exportCSV() {
-            if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
+window.openOcrModal = function() { 
+    const modal = document.getElementById('ocrModal');
+    if (modal) modal.classList.remove('hidden'); 
+};
+
+window.closeOcrModal = function() { 
+    const modal = document.getElementById('ocrModal');
+    if (modal) modal.classList.add('hidden'); 
+};
+
+window.saveToFirebase = async function() {
+    console.log('💾 Local processing complete (Server sync handled via Python/Actions)');
+};
+
+window.exportCSV = function() {
+    if (!funds || funds.length === 0) return alert("ไม่มีข้อมูลสำหรับส่งออก");
+    
+    try {
+        let csvContent = "\uFEFF"; // UTF-8 BOM
+        csvContent += "ชื่อแผนลงทุน,NAV ต้นทุนถัวเฉลี่ย,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
+
+        funds.forEach(f => {
+            const currentNav = f.currentNav || 0;
+            const avgNav = f.avgNav || 0;
+            const units = f.units || 0;
+            const fVal = units * currentNav;
+            const fCost = units * avgNav;
+            const profit = fVal - fCost;
+            const codeName = `"${(f.code || 'แผนลงทุน').replace(/"/g, '""')}"`;
             
-            try {
-                let csvContent = "\uFEFF"; // UTF-8 BOM ให้ Excel อ่านภาษาไทยไม่เป็นต่างด้าว
-                csvContent += "ชื่อแผนลงทุน,NAV ต้นทุนถัวเฉลี่ย,NAV ปัจจุบัน,จำนวนหน่วย,มูลค่าปัจจุบัน(บาท),กำไรสะสม(บาท),สัดส่วนเป้าหมาย(%)\n";
+            csvContent += `${codeName},${avgNav.toFixed(4)},${currentNav.toFixed(4)},${units},${fVal.toFixed(2)},${profit.toFixed(2)},${f.targetPct || 0}\n`;
+        });
 
-                funds.forEach(f => {
-                    const currentNav = f.currentNav || 0;
-                    const avgNav = f.avgNav || 0;
-                    const units = f.units || 0;
-                    const fVal = units * currentNav;
-                    const fCost = units * avgNav;
-                    const profit = fVal - fCost;
-                    const codeName = `"${(f.code || 'แผนลงทุน').replace(/"/g, '""')}"`;
-                    
-                    csvContent += `${codeName},${avgNav.toFixed(4)},${currentNav.toFixed(4)},${units},${fVal.toFixed(2)},${profit.toFixed(2)},${f.targetPct || 0}\n`;
-                });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", url);
+        downloadAnchor.setAttribute("download", `gpf_portfolio_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+        URL.revokeObjectURL(url);
+        console.log("📥 ส่งออกไฟล์ CSV สำเร็จ");
+    } catch (err) {
+        console.error("CSV Export Error:", err);
+        alert("เกิดข้อผิดพลาดในการส่งออก CSV: " + err.message);
+    }
+};
 
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const downloadAnchor = document.createElement('a');
-                downloadAnchor.setAttribute("href", url);
-                downloadAnchor.setAttribute("download", `gpf_portfolio_${new Date().toISOString().slice(0,10)}.csv`);
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                document.body.removeChild(downloadAnchor);
-                URL.revokeObjectURL(url);
-                console.log("📥 ส่งออกไฟล์ CSV สำเร็จ");
-            } catch (err) {
-                console.error("CSV Export Error:", err);
-                alert("เกิดข้อผิดพลาดในการส่งออก CSV: " + err.message);
-            }
-        }
+// เติมบรรทัดผูกฟังก์ชันหลักที่เหลือให้ครบถ้วน
+if (typeof saveFund !== 'undefined') window.saveFund = saveFund;
+if (typeof processPdfSnapshot !== 'undefined') window.processPdfSnapshot = processPdfSnapshot;
+if (typeof processOcrImage !== 'undefined') window.processOcrImage = processOcrImage;
         
         // เริ่มรันการโหลดข้อมูล
         loadData();
