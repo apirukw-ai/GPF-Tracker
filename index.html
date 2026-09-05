@@ -791,45 +791,27 @@ window.saveFund = async function() {
     renderAll();
 };
 
+// ==========================================
+// 1. ฟังก์ชันลบแผนลงทุน (แก้ไขให้ลบได้จริงทันที)
+// ==========================================
 window.deleteFund = async function(id) {
     if (!confirm("คุณต้องการลบแผนลงทุนนี้ใช่หรือไม่?")) return;
-    funds = funds.filter(f => f.id !== id);
-    await window.syncToFirebase();
-    renderAll();
-};
-
-window.syncToFirebase = async function() {
-    try {
-        const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) + ' น.';
-        const payload = {
-            lastUpdated: nowStr,
-            funds: funds,
-            history: historyLogs,
-            gpf_transactions: gpfTransactions
-        };
-
-        const res = await fetch(DB_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            console.log("☁️ บันทึกข้อมูลลง Firebase สำเร็จ");
-            const badgeEl = document.getElementById('lastUpdatedBadge');
-            if (badgeEl) badgeEl.innerText = nowStr;
-        }
-    } catch (err) {
-        console.error("Firebase Sync Error:", err);
-        alert("บันทึกลง Firebase ไม่สำเร็จ: " + err.message);
+    
+    const targetId = String(id);
+    funds = funds.filter(f => String(f.id) !== targetId);
+    
+    // อัปเดตหน้าจอทันที
+    if (typeof renderAll === 'function') renderAll();
+    else if (typeof window.renderAll === 'function') window.renderAll();
+    
+    // ซิงค์การลบไป Firebase
+    if (typeof window.syncToFirebase === 'function') {
+        await window.syncToFirebase();
     }
 };
 
 // ==========================================
-// 3. ฟังก์ชัน นำเข้า PDF & สแกนรูปภาพ OCR
-// ==========================================
-// ==========================================
-// ฟังก์ชันอ่านไฟล์ PDF Snapshot และอัปเดตเข้าตารางอัตโนมัติ
+// 2. ฟังก์ชันอ่าน PDF (แก้ไข Regex ครอบคลุมทุกแผน)
 // ==========================================
 window.processPdfSnapshot = async function(event) {
     const file = event.target.files[0];
@@ -848,8 +830,8 @@ window.processPdfSnapshot = async function(event) {
 
         console.log("📄 ข้อความดิบจาก PDF:", fullText);
 
-        // Regex แกะชื่อแผน, จำนวนหน่วย, NAV ต่อหน่วย, และมูลค่ารวม
-        const regex = /(แผน[\u0e00-\u0e7f\s]+?)\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2})/g;
+        // Regex แบบยืดหยุ่น: จับชื่อแผนหลังคำว่า "แผน" จนถึงตัวเลขชุดแรก
+        const regex = /(แผน[^\d]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/g;
         let match;
         let updatedCount = 0;
 
@@ -860,26 +842,16 @@ window.processPdfSnapshot = async function(event) {
 
             if (isNaN(units) || isNaN(nav)) continue;
 
-            // ค้นหาแผนเดิมในพอร์ต หรือค้นหาด้วย Mapping Rule
-            let targetFund = funds.find(f => f.code === rawPlanName);
-            if (!targetFund) {
-                const matchedId = getFundIdByPlanName(rawPlanName);
-                if (matchedId) {
-                    targetFund = funds.find(f => f.id === matchedId);
-                }
-            }
+            // ค้นหาแผนที่มีอยู่แล้ว หรือสร้างใหม่
+            let targetFund = funds.find(f => f.code && (f.code.trim() === rawPlanName || rawPlanName.includes(f.code.trim())));
 
             if (targetFund) {
                 targetFund.units = units;
                 targetFund.currentNav = nav;
-                if (!targetFund.avgNav || targetFund.avgNav === 0) {
-                    targetFund.avgNav = nav; // ตั้งค่า NAV ต้นทุนเริ่มต้นหากยังไม่มีข้อมูล
-                }
+                if (!targetFund.avgNav || targetFund.avgNav === 0) targetFund.avgNav = nav;
             } else {
-                // หากยังไม่มีแผน ให้สร้างแผนใหม่ลงตารางให้อัตโนมัติ
-                const newId = getFundIdByPlanName(rawPlanName) || ('gpf_' + Date.now() + Math.random().toString(36).substr(2, 3));
                 funds.push({
-                    id: newId,
+                    id: 'gpf_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                     code: rawPlanName,
                     units: units,
                     currentNav: nav,
@@ -891,9 +863,13 @@ window.processPdfSnapshot = async function(event) {
         }
 
         if (updatedCount > 0) {
-            renderAll();
-            await window.syncToFirebase();
-            alert(`นำเข้าข้อมูลจาก PDF สำเร็จทั้งหมด ${updatedCount} รายการ!`);
+            if (typeof renderAll === 'function') renderAll();
+            else if (typeof window.renderAll === 'function') window.renderAll();
+
+            if (typeof window.syncToFirebase === 'function') {
+                await window.syncToFirebase();
+            }
+            alert(`นำเข้าข้อมูลสำเร็จทั้งหมด ${updatedCount} แผน!`);
         } else {
             alert("ไม่พบรูปแบบข้อมูลแผนลงทุนในไฟล์ PDF");
         }
@@ -907,7 +883,7 @@ window.processPdfSnapshot = async function(event) {
 };
 
 // ==========================================
-// ฟังก์ชันสแกนรูปภาพ OCR
+// 3. ฟังก์ชันสแกนรูปภาพ OCR
 // ==========================================
 window.processOcrImage = async function(event) {
     const file = event.target.files[0];
@@ -918,10 +894,12 @@ window.processOcrImage = async function(event) {
     const statusText = document.getElementById('ocrStatusText');
     const resultForm = document.getElementById('ocrResultForm');
 
-    statusContainer.classList.remove('hidden');
-    previewImg.classList.remove('hidden');
-    previewImg.src = URL.createObjectURL(file);
-    statusText.innerText = "กำลังอ่านข้อมูลสลิปด้วย OCR...";
+    if (statusContainer) statusContainer.classList.remove('hidden');
+    if (previewImg) {
+        previewImg.classList.remove('hidden');
+        previewImg.src = URL.createObjectURL(file);
+    }
+    if (statusText) statusText.innerText = "กำลังอ่านข้อมูลสลิปด้วย OCR...";
 
     try {
         const worker = await Tesseract.createWorker('tha+eng');
@@ -931,16 +909,16 @@ window.processOcrImage = async function(event) {
         const extractedText = ret.data.text;
         console.log("📷 ข้อความ OCR:", extractedText);
 
-        const regex = /(แผน[\u0e00-\u0e7f\s]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/g;
+        const regex = /(แผน[^\d]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/g;
         let match;
         let foundAny = false;
 
         while ((match = regex.exec(extractedText)) !== null) {
-            const planName = match[1].trim();
+            const rawPlanName = match[1].trim();
             const val1 = parseFloat(match[2].replace(/,/g, ''));
             const val2 = parseFloat(match[3].replace(/,/g, ''));
 
-            let fund = funds.find(f => f.code.includes(planName) || planName.includes(f.code));
+            let fund = funds.find(f => f.code && (f.code.includes(rawPlanName) || rawPlanName.includes(f.code)));
             if (fund && !isNaN(val1)) {
                 fund.units = val1;
                 if (!isNaN(val2)) fund.currentNav = val2;
@@ -949,16 +927,20 @@ window.processOcrImage = async function(event) {
         }
 
         if (foundAny) {
-            renderAll();
-            await window.syncToFirebase();
-            statusText.innerText = "อัปเดตข้อมูลจากรูปภาพเรียบร้อย!";
+            if (typeof renderAll === 'function') renderAll();
+            else if (typeof window.renderAll === 'function') window.renderAll();
+
+            if (typeof window.syncToFirebase === 'function') {
+                await window.syncToFirebase();
+            }
+            if (statusText) statusText.innerText = "อัปเดตข้อมูลสำเร็จ!";
         } else {
-            statusText.innerText = "สแกนข้อความสำเร็จ (โปรดตรวจสอบข้อมูลใน Console)";
+            if (statusText) statusText.innerText = "สแกนสำเร็จ (โปรดตรวจสอบข้อมูล)";
         }
-        resultForm.classList.remove('hidden');
+        if (resultForm) resultForm.classList.remove('hidden');
     } catch (err) {
         console.error("OCR Error:", err);
-        statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
+        if (statusText) statusText.innerText = "เกิดข้อผิดพลาดในการอ่านรูปภาพ";
     } finally {
         event.target.value = "";
     }
