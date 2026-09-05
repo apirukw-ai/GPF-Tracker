@@ -828,6 +828,9 @@ window.syncToFirebase = async function() {
 // ==========================================
 // 3. ฟังก์ชัน นำเข้า PDF & สแกนรูปภาพ OCR
 // ==========================================
+// ==========================================
+// ฟังก์ชันอ่านไฟล์ PDF Snapshot และอัปเดตเข้าตารางอัตโนมัติ
+// ==========================================
 window.processPdfSnapshot = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -840,11 +843,61 @@ window.processPdfSnapshot = async function(event) {
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
-            fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+            fullText += textContent.items.map(item => item.str).join(" ") + " ";
         }
 
-        console.log("📄 ข้อความที่อ่านได้จาก PDF Snapshot:", fullText);
-        alert("อ่านข้อมูล PDF เรียบร้อยแล้ว (ตรวจสอบรายการข้อมูลใน Console)");
+        console.log("📄 ข้อความดิบจาก PDF:", fullText);
+
+        // Regex แกะชื่อแผน, จำนวนหน่วย, NAV ต่อหน่วย, และมูลค่ารวม
+        const regex = /(แผน[\u0e00-\u0e7f\s]+?)\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2})/g;
+        let match;
+        let updatedCount = 0;
+
+        while ((match = regex.exec(fullText)) !== null) {
+            const rawPlanName = match[1].trim();
+            const units = parseFloat(match[2].replace(/,/g, ''));
+            const nav = parseFloat(match[3].replace(/,/g, ''));
+
+            if (isNaN(units) || isNaN(nav)) continue;
+
+            // ค้นหาแผนเดิมในพอร์ต หรือค้นหาด้วย Mapping Rule
+            let targetFund = funds.find(f => f.code === rawPlanName);
+            if (!targetFund) {
+                const matchedId = getFundIdByPlanName(rawPlanName);
+                if (matchedId) {
+                    targetFund = funds.find(f => f.id === matchedId);
+                }
+            }
+
+            if (targetFund) {
+                targetFund.units = units;
+                targetFund.currentNav = nav;
+                if (!targetFund.avgNav || targetFund.avgNav === 0) {
+                    targetFund.avgNav = nav; // ตั้งค่า NAV ต้นทุนเริ่มต้นหากยังไม่มีข้อมูล
+                }
+            } else {
+                // หากยังไม่มีแผน ให้สร้างแผนใหม่ลงตารางให้อัตโนมัติ
+                const newId = getFundIdByPlanName(rawPlanName) || ('gpf_' + Date.now() + Math.random().toString(36).substr(2, 3));
+                funds.push({
+                    id: newId,
+                    code: rawPlanName,
+                    units: units,
+                    currentNav: nav,
+                    avgNav: nav,
+                    targetPct: 0
+                });
+            }
+            updatedCount++;
+        }
+
+        if (updatedCount > 0) {
+            renderAll();
+            await window.syncToFirebase();
+            alert(`นำเข้าข้อมูลจาก PDF สำเร็จทั้งหมด ${updatedCount} รายการ!`);
+        } else {
+            alert("ไม่พบรูปแบบข้อมูลแผนลงทุนในไฟล์ PDF");
+        }
+
     } catch (err) {
         console.error("PDF Processing Error:", err);
         alert("เกิดข้อผิดพลาดในการอ่านไฟล์ PDF: " + err.message);
@@ -853,6 +906,9 @@ window.processPdfSnapshot = async function(event) {
     }
 };
 
+// ==========================================
+// ฟังก์ชันสแกนรูปภาพ OCR
+// ==========================================
 window.processOcrImage = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -865,15 +921,40 @@ window.processOcrImage = async function(event) {
     statusContainer.classList.remove('hidden');
     previewImg.classList.remove('hidden');
     previewImg.src = URL.createObjectURL(file);
-    statusText.innerText = "กำลังอ่านข้อมูลสลิปด้วย OCR (โปรดรอสักครู่)...";
+    statusText.innerText = "กำลังอ่านข้อมูลสลิปด้วย OCR...";
 
     try {
         const worker = await Tesseract.createWorker('tha+eng');
         const ret = await worker.recognize(file);
         await worker.terminate();
 
-        console.log("📷 ข้อความที่ OCR อ่านได้:", ret.data.text);
-        statusText.innerText = "สแกนรูปภาพสลิปสำเร็จ!";
+        const extractedText = ret.data.text;
+        console.log("📷 ข้อความ OCR:", extractedText);
+
+        const regex = /(แผน[\u0e00-\u0e7f\s]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/g;
+        let match;
+        let foundAny = false;
+
+        while ((match = regex.exec(extractedText)) !== null) {
+            const planName = match[1].trim();
+            const val1 = parseFloat(match[2].replace(/,/g, ''));
+            const val2 = parseFloat(match[3].replace(/,/g, ''));
+
+            let fund = funds.find(f => f.code.includes(planName) || planName.includes(f.code));
+            if (fund && !isNaN(val1)) {
+                fund.units = val1;
+                if (!isNaN(val2)) fund.currentNav = val2;
+                foundAny = true;
+            }
+        }
+
+        if (foundAny) {
+            renderAll();
+            await window.syncToFirebase();
+            statusText.innerText = "อัปเดตข้อมูลจากรูปภาพเรียบร้อย!";
+        } else {
+            statusText.innerText = "สแกนข้อความสำเร็จ (โปรดตรวจสอบข้อมูลใน Console)";
+        }
         resultForm.classList.remove('hidden');
     } catch (err) {
         console.error("OCR Error:", err);
