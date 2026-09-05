@@ -792,26 +792,33 @@ window.saveFund = async function() {
 };
 
 // ==========================================
-// 1. ฟังก์ชันลบแผนลงทุน (แก้ไขให้ลบได้จริงทันที)
+// 1. ฟังก์ชันลบแผนลงทุน (แก้ไขให้ลบจาก Array โดยตรงด้วย splice)
 // ==========================================
 window.deleteFund = async function(id) {
     if (!confirm("คุณต้องการลบแผนลงทุนนี้ใช่หรือไม่?")) return;
     
-    const targetId = String(id);
-    funds = funds.filter(f => String(f.id) !== targetId);
+    // ค้นหาตำแหน่ง (Index) ของแผนใน Array
+    const index = funds.findIndex(f => String(f.id) === String(id));
     
-    // อัปเดตหน้าจอทันที
-    if (typeof renderAll === 'function') renderAll();
-    else if (typeof window.renderAll === 'function') window.renderAll();
-    
-    // ซิงค์การลบไป Firebase
-    if (typeof window.syncToFirebase === 'function') {
-        await window.syncToFirebase();
+    if (index !== -1) {
+        // ลบข้อมูลออกในตำแหน่งนั้นโดยตรง
+        funds.splice(index, 1);
+        
+        // สั่งอัปเดตตาราง
+        if (typeof renderAll === 'function') renderAll();
+        else if (typeof window.renderAll === 'function') window.renderAll();
+        
+        // สั่งบันทึกลง Firebase
+        if (typeof window.syncToFirebase === 'function') {
+            await window.syncToFirebase();
+        }
+    } else {
+        alert("ไม่พบรหัสแผนลงทุนที่ต้องการลบ");
     }
 };
 
 // ==========================================
-// 2. ฟังก์ชันอ่าน PDF (แก้ไข Regex ครอบคลุมทุกแผน)
+// 2. ฟังก์ชันอ่าน PDF (ล้างช่องว่างก่อนดึงข้อมูล)
 // ==========================================
 window.processPdfSnapshot = async function(event) {
     const file = event.target.files[0];
@@ -828,10 +835,12 @@ window.processPdfSnapshot = async function(event) {
             fullText += textContent.items.map(item => item.str).join(" ") + " ";
         }
 
-        console.log("📄 ข้อความดิบจาก PDF:", fullText);
+        // จัดการช่องว่างที่ซ้ำซ้อนให้เหลือเคาะเดียว เพื่อให้ Regex ทำงานได้เสถียร
+        fullText = fullText.replace(/\s+/g, ' ');
+        console.log("📄 ข้อความที่คลีนช่องว่างแล้ว:", fullText);
 
-        // Regex แบบยืดหยุ่น: จับชื่อแผนหลังคำว่า "แผน" จนถึงตัวเลขชุดแรก
-        const regex = /(แผน[^\d]+?)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/g;
+        // ค้นหา: "แผน..." ตามด้วยตัวเลข 3 ชุด (จำนวนหน่วย, NAV, ยอดเงิน)
+        const regex = /(แผน[ก-๙a-zA-Z\s]+?)\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2,4})\s+([\d,]+\.\d{2})/g;
         let match;
         let updatedCount = 0;
 
@@ -842,7 +851,6 @@ window.processPdfSnapshot = async function(event) {
 
             if (isNaN(units) || isNaN(nav)) continue;
 
-            // ค้นหาแผนที่มีอยู่แล้ว หรือสร้างใหม่
             let targetFund = funds.find(f => f.code && (f.code.trim() === rawPlanName || rawPlanName.includes(f.code.trim())));
 
             if (targetFund) {
